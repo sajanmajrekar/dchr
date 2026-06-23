@@ -23,12 +23,32 @@
         padding: 8px 15px 5px 9px;
 }
 div.dataTables_paginate{
-    margin-top: -33px;
+      float: right;
+    margin-top: 12px;
+    border: 0;
+    position: relative;
+    z-index: 20;
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
 }
-div.dataTables_paginate{
-    float: right;
-    margin-top: -47px;
-    border:0;
+div.dataTables_paginate .pagination{
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+div.dataTables_paginate .paginate_button{
+    margin: 0 !important;
+}
+div.dataTables_paginate .pagination > li > a,
+div.dataTables_paginate .pagination > li > span{
+    border-radius: 4px !important;
+    margin: 0 4px;
+    min-width: 38px;
+    text-align: center;
+    padding: 8px 12px;
 }
 #Leadform .modal-body{
     padding-top: 10px
@@ -39,8 +59,8 @@ div.dataTables_paginate{
     margin-bottom: 15px;
 }
 div.dataTables_info{
-    padding-top: 8px;
-    height: 50px;
+    padding-top: 12px;
+    min-height: 50px;
 }
 .datefilters{
     padding-top: 0px;
@@ -148,7 +168,6 @@ div.dataTables_info{
         </div>
 
         <div class="table-responsive">
-           <table id="leaddatatable" class="table table-striped table-bordered table-vcenter">
             <div class="row datefilters">
              <div class="form-group">
                     <div class="col-md-2">
@@ -264,7 +283,7 @@ div.dataTables_info{
             xhr.send('submit=true'); // Send the POST request with a parameter
         });
     </script>
-  
+            <table id="leaddatatable" class="table table-striped table-bordered table-vcenter">
                 <thead>
                     <tr>
                          <th class="text-center"><label class="csscheckbox csscheckbox-primary"><input class="checkmark" type="checkbox"><span></span></label></th>

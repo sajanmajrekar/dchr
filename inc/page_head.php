@@ -8,30 +8,39 @@
  *
  */
 
- 
-$query = "select * from tblstaff where email='".$_SESSION['user']."' and staffid='".$_SESSION['id']."'"; 
+$sessionUser = isset($_SESSION['user']) ? $_SESSION['user'] : '';
+$sessionId = isset($_SESSION['id']) ? $_SESSION['id'] : '';
+$sessionAccountType = isset($_SESSION['accounttype']) ? $_SESSION['accounttype'] : '';
+
+if ($sessionUser === '' || $sessionId === '') {
+    session_destroy();
+    echo '<script>window.location.href="login.php";</script>';
+    exit();
+}
+
+$query = "select * from tblstaff where email='" . $sessionUser . "' and staffid='" . $sessionId . "'";
 $result = query($query);
-$row = $result->fetch_object();
 $rowcount = mysqli_num_rows($result);
-// if(!isset($_SESSION['user'])){
-        if($rowcount == 0){
-            session_destroy();
-           echo '<script>window.location.href="login.php";</script>';
-           exit();
-        } 
-// }
-$email=$_SESSION['user'];
-$isAdmin=false;
-if($_SESSION['accounttype']=='admin'){
+
+if ($rowcount == 0) {
+    session_destroy();
+    echo '<script>window.location.href="login.php";</script>';
+    exit();
+}
+
+$email = $sessionUser;
+$isAdmin = false;
+if ($sessionAccountType == 'admin') {
     $isAdmin = true;
 }
+
 $sql = query("select * from tblstaff where email='$email'");
-    $name='';
-    $rowcount = mysqli_num_rows($sql);
-    if($rowcount!=0){
-        $r = $sql->fetch_object();
-        $name = $r->firstname;
-    }
+$name = '';
+$rowcount = mysqli_num_rows($sql);
+if ($rowcount != 0) {
+    $r = $sql->fetch_object();
+    $name = $r->firstname;
+}
 ?>
 
 <!-- Page Wrapper -->

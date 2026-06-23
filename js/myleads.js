@@ -40,11 +40,21 @@ $('#downloadsample').click(function(e) {
              {
 
                        manageUserTable= $('#leaddatatable').DataTable({
+                            processing: true,
+                            serverSide: true,
+                            paging: true,
+                            pagingType: 'simple',
                             buttons: ['csv', 'excel', 'pdf' ],
                             'order': [],
                             columnDefs: [ { orderable: false, targets: [ 4 ] } ],
                             pageLength: 10,
-                            lengthMenu: [[5, 10, 20,50], [5, 10, 20,50]],
+                            lengthMenu: [[5, 10, 20, 50, 100], [5, 10, 20, 50, 100]],
+                            language: {
+                                paginate: {
+                                    previous: 'Previous',
+                                    next: 'Next'
+                                }
+                            },
                             dom: 'lBfrtip',
                             "ajax" : {
                                 url:"php_actions/fetchMyLeads.php",
@@ -53,16 +63,21 @@ $('#downloadsample').click(function(e) {
                                  is_date_search:is_date_search,roles: roles, leadsource:leadsource, leadstatus:leadstatus , experiance: experiance
                                 },
                                 dataSrc: function(json) {
+                                    console.log('fetchMyLeads page response:', json);
                                     if (json && json.error) {
                                         console.error('fetchMyLeads response error:', json);
                                     }
                                     return json && json.data ? json.data : [];
                                 },
-                                error: function(xhr) {
-                                    console.error('fetchMyLeads ajax error:', xhr.responseText || xhr.statusText);
+                                error: function(xhr, textStatus, errorThrown) {
+                                    console.error('fetchMyLeads ajax error:', textStatus, errorThrown, xhr.responseText || xhr.statusText);
                                 }
                                }
                         });
+                       $('#leaddatatable').on('draw.dt', function () {
+                            var pageInfo = $('#leaddatatable').DataTable().page.info();
+                            console.log('fetchMyLeads page info:', pageInfo);
+                       });
                        $(".dt-button").addClass("btn btn-primary");
             }
     $('#search').click(function(){
@@ -100,11 +115,21 @@ $('#downloadsample').click(function(e) {
     var interval = $(this).val();
          $('#leaddatatable').DataTable().destroy();
          manageUserTable= $('#leaddatatable').DataTable({
+                            processing: true,
+                            serverSide: true,
+                            paging: true,
+                            pagingType: 'simple',
                             buttons: ['csv', 'excel', 'pdf' ],
                             'order': [],
                             columnDefs: [ { orderable: false, targets: [ 4 ] } ],
                             pageLength: 10,
-                            lengthMenu: [[5, 10, 20, 50], [5, 10, 20, 50]],
+                            lengthMenu: [[5, 10, 20, 50, 100], [5, 10, 20, 50, 100]],
+                            language: {
+                                paginate: {
+                                    previous: 'Previous',
+                                    next: 'Next'
+                                }
+                            },
                             dom: 'lBfrtip',
                             "ajax" : {
                                 url:"php_actions/fetchByLastDays.php",
@@ -113,16 +138,21 @@ $('#downloadsample').click(function(e) {
                                  interval:interval
                                 },
                                 dataSrc: function(json) {
+                                    console.log('fetchByLastDays page response:', json);
                                     if (json && json.error) {
                                         console.error('fetchByLastDays response error:', json);
                                     }
                                     return json && json.data ? json.data : [];
                                 },
-                                error: function(xhr) {
-                                    console.error('fetchByLastDays ajax error:', xhr.responseText || xhr.statusText);
+                                error: function(xhr, textStatus, errorThrown) {
+                                    console.error('fetchByLastDays ajax error:', textStatus, errorThrown, xhr.responseText || xhr.statusText);
                                 }
                                }
                         });
+          $('#leaddatatable').on('draw.dt', function () {
+                var pageInfo = $('#leaddatatable').DataTable().page.info();
+                console.log('fetchByLastDays page info:', pageInfo);
+          });
           $(".dt-button").addClass("btn btn-primary");
     });
     $("#example-chosen").change(function() {
