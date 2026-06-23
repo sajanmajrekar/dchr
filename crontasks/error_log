@@ -1,0 +1,4 @@
+[27-Dec-2019 02:30:23 America/New_York] PHP Deprecated:  __autoload() is deprecated, use spl_autoload_register() instead in /home/digiplmk/crm.digichefs.in/arena/mail/phpmailer/PHPMailerAutoload.php on line 45
+[27-Dec-2019 02:32:45 America/New_York] PHP Notice:  Undefined variable: Total in /home/digiplmk/crm.digichefs.in/arena/crontasks/weeklynotification.php on line 39
+[27-Dec-2019 02:32:45 America/New_York] PHP Notice:  Undefined variable: close in /home/digiplmk/crm.digichefs.in/arena/crontasks/weeklynotification.php on line 45
+[27-Dec-2019 02:33:54 America/New_York] PHP Parse error:  syntax error, unexpected ',' in /home/digiplmk/crm.digichefs.in/arena/crontasks/weeklynotification.php on line 8
