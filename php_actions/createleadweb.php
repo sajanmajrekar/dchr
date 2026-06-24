@@ -38,6 +38,21 @@ function getServerSecret($key)
 	return '';
 }
 
+function normalizeRelocationValue($value)
+{
+	$value = trim((string) $value);
+
+	if ($value === '13' || strcasecmp($value, 'yes') === 0) {
+		return 'Yes';
+	}
+
+	if ($value === '11' || strcasecmp($value, 'no') === 0) {
+		return 'No';
+	}
+
+	return $value;
+}
+
 function syncApplicantToMailerLite($email, $name, &$valid)
 {
 	$apiKey = getServerSecret('MAILERLITE_API_KEY');
@@ -118,6 +133,7 @@ if($_POST) {
 	$email = addslashes($_POST['email']);
 	$phone = addslashes($_POST['phone']);
 	$source = addslashes($_POST['source']);
+	$willing_to_relocate = isset($_POST['willing_to_relocate']) ? addslashes(normalizeRelocationValue($_POST['willing_to_relocate'])) : '';
 	$street = '';
 	$country = '';
 	$city = addslashes($_POST['city']);
@@ -131,7 +147,7 @@ if($_POST) {
 	$skillset = addslashes($_POST['skillset']);
 	$refer = addslashes($_POST['refer']);
 	$info = '';
-	$portfolio_link= addslashes($_POST['portfolio']);
+	$portfolio_link = isset($_POST['portfolio']) ? addslashes($_POST['portfolio']) : '';
 	$selectedOption = "";
 	
 	if(isset($_POST['example-chosen-multiple'])){
@@ -182,6 +198,11 @@ if($_POST) {
       <td style="font-weight:bold;color:#000;padding:15px 10px;border-bottom:dotted 1px #cccccc">:</td>
       <td style="color:#000;padding:15px 10px;border-bottom:dotted 1px #cccccc">' .$selected_option_users. '</td>
     </tr>  
+    <tr>
+      <td width="100" style="font-weight:bold;color:#000;padding:15px 10px;border-bottom:dotted 1px #cccccc">Willing to Relocate</td>
+      <td style="font-weight:bold;color:#000;padding:15px 10px;border-bottom:dotted 1px #cccccc">:</td>
+      <td style="color:#000;padding:15px 10px;border-bottom:dotted 1px #cccccc">' . $willing_to_relocate . '</td>
+    </tr>
    <tr>
       <td width="100" colspan="3" style="font-weight:bold;color:#000;padding:15px 10px;border-top: 1px solid #ccc;">Check the CRM for more details.</td>
     </tr>
@@ -231,7 +252,7 @@ HR team";
 		if(in_array($type, array('docx', 'doc', 'pdf', 'rtf', 'DOCX', 'DOC', 'PDF', 'RTF'))) {
 		    if(is_uploaded_file($_FILES['example-file-input']['tmp_name'])) {
 		         if(move_uploaded_file($_FILES['example-file-input']['tmp_name'], $url)) {
-					$sql ="INSERT INTO `tblleads`(`name`, `country`, `zip`, `city`, `street`,`dateadded`, `status`, `source`,  `email`, `phonenumber`, `experiance`, `qualification`, `cjtitle`, `cemployer`, `esalary`, `csalary`, `skillset`, `ainfo`, `roles`, `nperiod`, `resume`,`referral`,`portfolio`) VALUES ('$name','$country','$pincode','$city','$street','$date','20','$source','$email','$phone','$experience','$qualification','$cjob','$cemployer','$expected','$csalary','$skillset','$info','$selectedOption','$nperiod','$img_name','$refer','$portfolio_link')";
+					$sql ="INSERT INTO `tblleads`(`name`, `country`, `zip`, `city`, `street`,`dateadded`, `status`, `source`, `willing_to_relocate`, `email`, `phonenumber`, `experiance`, `qualification`, `cjtitle`, `cemployer`, `esalary`, `csalary`, `skillset`, `ainfo`, `roles`, `nperiod`, `resume`,`referral`,`portfolio`) VALUES ('$name','$country','$pincode','$city','$street','$date','20','$source','$willing_to_relocate','$email','$phone','$experience','$qualification','$cjob','$cemployer','$expected','$csalary','$skillset','$info','$selectedOption','$nperiod','$img_name','$refer','$portfolio_link')";
 						if($connect->query($sql) === TRUE && SendMailHTML("careers@digichefs.com",'Digichefs || Job Enquiry received',$body,'',$url)) {
 							$valid['success'] = true;
 							$valid['messages'] = "Thank you! We have received your application at DigiChefs, We shall get back to you soon.";
@@ -247,7 +268,7 @@ HR team";
 				}
 			}
 		}else{
-			$sql ="INSERT INTO `tblleads`(`name`, `country`, `zip`, `city`, `street`,`dateadded`, `status`, `source`,  `email`, `phonenumber`, `experiance`, `qualification`, `cjtitle`, `cemployer`, `esalary`, `csalary`, `skillset`, `ainfo`, `roles`, `nperiod`, `resume`,`referral`,`portfolio`) VALUES ('$name','$country','$pincode','$city','$street','$date','20','$source','$email','$phone','$experience','$qualification','$cjob','$cemployer','$expected','$csalary','$skillset','$info','$selectedOption','$nperiod','$img_name','$refer','$portfolio_link')";
+			$sql ="INSERT INTO `tblleads`(`name`, `country`, `zip`, `city`, `street`,`dateadded`, `status`, `source`, `willing_to_relocate`, `email`, `phonenumber`, `experiance`, `qualification`, `cjtitle`, `cemployer`, `esalary`, `csalary`, `skillset`, `ainfo`, `roles`, `nperiod`, `resume`,`referral`,`portfolio`) VALUES ('$name','$country','$pincode','$city','$street','$date','20','$source','$willing_to_relocate','$email','$phone','$experience','$qualification','$cjob','$cemployer','$expected','$csalary','$skillset','$info','$selectedOption','$nperiod','$img_name','$refer','$portfolio_link')";
 						if($connect->query($sql) === TRUE && SendMailHTML('careers@digichefs.com','Digichefs || Job Enquiry received',$body,'','')) {
 						    
 						    $valid['success'] = true;
@@ -268,8 +289,6 @@ HR team";
 	$connect->close();
 }// /if $_POST
 echo json_encode($valid);
-
-
 
 
 

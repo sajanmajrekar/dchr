@@ -392,6 +392,7 @@ function editMyLead(Id = null) {
                 $("#editskillset").val(response.skillset);
                 $("#info").val(response.ainfo);
                 $("#editlead-reference").val(response.referral);
+                $("#editwillingtorelocate").val(response.willing_to_relocate);
                 //$("#editexample-chosen-multiple").val(response.roles);
 
                

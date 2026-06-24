@@ -27,6 +27,7 @@ if($_POST) {
 	$skill = addslashes($_POST['editskillset']);
 	$additional = addslashes($_POST['editinfo']);
 	$notice = addslashes($_POST['editnotice']);
+	$willingToRelocate = isset($_POST['editwillingtorelocate']) ? addslashes($_POST['editwillingtorelocate']) : '';
 	$selectedOption = "";
 	
 	if(isset($_POST['editexample-chosen-multiple'])){
@@ -73,7 +74,7 @@ if($_POST) {
 	                        }
 							date_default_timezone_set('Asia/Kolkata');
 				        	$date = date('Y-m-d H:i:s');
-							$sql = "UPDATE tblleads SET name = '$name', phonenumber = '$phone', email = '$email',  source = '$leadsource', status = '$leadstatus', street='$street', country='$country',city='$city',zip ='$pin', experiance ='$experience', qualification = '$qualification', cjtitle = '$cjob', cemployer = '$cemployer', esalary ='$expectedsal', csalary = '$csalary', skillset = '$skill', ainfo = '$additional', roles = '$selectedOption', lastcontact='$date', resume = '$img_name', nperiod = '$notice',followup = followup + 1 WHERE id = '$id'";
+							$sql = "UPDATE tblleads SET name = '$name', phonenumber = '$phone', email = '$email',  source = '$leadsource', willing_to_relocate = '$willingToRelocate', status = '$leadstatus', street='$street', country='$country',city='$city',zip ='$pin', experiance ='$experience', qualification = '$qualification', cjtitle = '$cjob', cemployer = '$cemployer', esalary ='$expectedsal', csalary = '$csalary', skillset = '$skill', ainfo = '$additional', roles = '$selectedOption', lastcontact='$date', resume = '$img_name', nperiod = '$notice',followup = followup + 1 WHERE id = '$id'";
 							$logSuccess = true;
 							if($shouldLogActivity){
 								$sql1 = "INSERT INTO `tblleadactivitylog`(leadid, description, date, staffid, additional_data) VALUES('$id', '$leadstatus', '$date', '$userid', '$comment')";
@@ -92,7 +93,7 @@ if($_POST) {
 			}else{
 							date_default_timezone_set('Asia/Kolkata');
 				        	$date = date('Y-m-d H:i:s');
-							$sql = "UPDATE tblleads SET name = '$name', phonenumber = '$phone', email = '$email',  source = '$leadsource', status = '$leadstatus', street='$street', country='$country',city='$city',zip ='$pin', experiance ='$experience', qualification = '$qualification', cjtitle = '$cjob', cemployer = '$cemployer', esalary ='$expectedsal', csalary = '$csalary', skillset = '$skill', ainfo = '$additional', roles = '$selectedOption', lastcontact='$date',  nperiod = '$notice', followup = followup + 1 WHERE id = '$id'";
+							$sql = "UPDATE tblleads SET name = '$name', phonenumber = '$phone', email = '$email',  source = '$leadsource', willing_to_relocate = '$willingToRelocate', status = '$leadstatus', street='$street', country='$country',city='$city',zip ='$pin', experiance ='$experience', qualification = '$qualification', cjtitle = '$cjob', cemployer = '$cemployer', esalary ='$expectedsal', csalary = '$csalary', skillset = '$skill', ainfo = '$additional', roles = '$selectedOption', lastcontact='$date',  nperiod = '$notice', followup = followup + 1 WHERE id = '$id'";
 							$logSuccess = true;
 							if($shouldLogActivity){
 								$sql1 = "INSERT INTO `tblleadactivitylog`(leadid, description, date, staffid, additional_data) VALUES('$id', '$leadstatus', '$date', '$userid', '$comment')";
@@ -118,7 +119,7 @@ if($_POST) {
 	                        }
 							date_default_timezone_set('Asia/Kolkata');
 							$date = date('Y-m-d H:i:s');
-							$sql = "UPDATE tblleads SET name = '$name', phonenumber = '$phone', email = '$email',  source = '$leadsource', status = '$leadstatus', street='$street', country='$country',city='$city',zip ='$pin', experiance ='$experience', qualification = '$qualification', cjtitle = '$cjob', cemployer = '$cemployer', esalary ='$expectedsal', csalary = '$csalary', skillset = '$skill', ainfo = '$additional', roles = '$selectedOption', nperiod = '$notice', resume = '$img_name' WHERE id = '$id'";
+							$sql = "UPDATE tblleads SET name = '$name', phonenumber = '$phone', email = '$email',  source = '$leadsource', willing_to_relocate = '$willingToRelocate', status = '$leadstatus', street='$street', country='$country',city='$city',zip ='$pin', experiance ='$experience', qualification = '$qualification', cjtitle = '$cjob', cemployer = '$cemployer', esalary ='$expectedsal', csalary = '$csalary', skillset = '$skill', ainfo = '$additional', roles = '$selectedOption', nperiod = '$notice', resume = '$img_name' WHERE id = '$id'";
 							$logSuccess = true;
 							if($shouldLogActivity){
 								$sql1 = "INSERT INTO `tblleadactivitylog`(leadid, description, date, staffid, additional_data) VALUES('$id', '$leadstatus', '$date', '$userid', '$comment')";
@@ -137,7 +138,7 @@ if($_POST) {
 			}else{
 							date_default_timezone_set('Asia/Kolkata');
 							$date = date('Y-m-d H:i:s');
-							$sql = "UPDATE tblleads SET name = '$name', phonenumber = '$phone', email = '$email',  source = '$leadsource', status = '$leadstatus', street='$street', country='$country',city='$city',zip ='$pin', experiance ='$experience', qualification = '$qualification', cjtitle = '$cjob', cemployer = '$cemployer', esalary ='$expectedsal', csalary = '$csalary', skillset = '$skill', ainfo = '$additional', nperiod = '$notice', roles = '$selectedOption' WHERE id = '$id'";
+							$sql = "UPDATE tblleads SET name = '$name', phonenumber = '$phone', email = '$email',  source = '$leadsource', willing_to_relocate = '$willingToRelocate', status = '$leadstatus', street='$street', country='$country',city='$city',zip ='$pin', experiance ='$experience', qualification = '$qualification', cjtitle = '$cjob', cemployer = '$cemployer', esalary ='$expectedsal', csalary = '$csalary', skillset = '$skill', ainfo = '$additional', nperiod = '$notice', roles = '$selectedOption' WHERE id = '$id'";
 							$logSuccess = true;
 							if($shouldLogActivity){
 								$sql1 = "INSERT INTO `tblleadactivitylog`(leadid, description, date, staffid, additional_data) VALUES('$id', '$leadstatus', '$date', '$userid', '$comment')";

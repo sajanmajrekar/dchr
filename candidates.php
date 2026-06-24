@@ -538,6 +538,16 @@ div.dataTables_info{
                                                    <input type="text" id="editlead-reference" class="form-control" name="editlead-reference"  disabled="true">
                                                 </div>
                                             </div>
+                                            <div class="form-group">
+                                                <div>
+                                                    <label for="editwillingtorelocate">Willing to Relocate</label>
+                                                    <select id="editwillingtorelocate" class="form-control" name="editwillingtorelocate">
+                                                        <option value="">Please select</option>
+                                                        <option value="Yes">Yes</option>
+                                                        <option value="No">No</option>
+                                                    </select>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>        
                             </div>
