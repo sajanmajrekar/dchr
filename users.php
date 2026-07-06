@@ -5,14 +5,7 @@ if($_SESSION['accounttype'] == 'user'){
    echo '<script>window.location.href="index.php";</script>';
    exit();
 }?>
-<?php if($_SESSION['accounttype'] == 'admin'){
-    echo "<style>
-    .table.table-vcenter th:last-child, .table.table-vcenter td:last-child{
-        display:none
-    }
-    </style>";
-}
-?>
+<?php $isSuperadmin = isset($_SESSION['accounttype']) && $_SESSION['accounttype'] == 'superadmin'; ?>
 <!-- Page content -->
 <div id="page-content">
     <!-- Table Styles Header -->
@@ -40,9 +33,11 @@ if($_SESSION['accounttype'] == 'user'){
     <div class="block full">
         <div class="block-title">
             <h2>Users</h2>
+            <?php if($isSuperadmin){ ?>
             <div class="btn-group pull-right">
                 <button class="btn btn-success" data-target="#addUserModal"  data-toggle="modal"><i class="fa fa-plus"></i>  Add User</button>
             </div>
+            <?php } ?>
         </div>
         <div class="table-responsive">
             <table id="userdatatable" class="table table-striped table-bordered table-vcenter">
@@ -133,6 +128,11 @@ if($_SESSION['accounttype'] == 'user'){
                                                             <label class="radio-inline" for="rights2">
                                                                 <input type="radio" id="rights2" name="rights" value="0"> User
                                                             </label>
+                                                            <?php if($isSuperadmin){ ?>
+                                                            <label class="radio-inline" for="rights3">
+                                                                <input type="radio" id="rights3" name="rights" value="2"> Superadmin
+                                                            </label>
+                                                            <?php } ?>
                                                         </div>
                                         </div>
                                     </div>
@@ -220,6 +220,11 @@ if($_SESSION['accounttype'] == 'user'){
                                                             <label class="radio-inline" for="rights2">
                                                                 <input type="radio" id="Edituser-rights2" name="edit-rights" value="0"> User
                                                             </label>
+                                                            <?php if($isSuperadmin){ ?>
+                                                            <label class="radio-inline" for="rights3">
+                                                                <input type="radio" id="Edituser-rights3" name="edit-rights" value="2"> Superadmin
+                                                            </label>
+                                                            <?php } ?>
                                                         </div>
                                         </div>
                                     </div>

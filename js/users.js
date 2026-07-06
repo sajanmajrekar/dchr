@@ -45,9 +45,15 @@ function editUser(UserId = null) {
                 if(response.admin == "1"){
                     $("#Edituser-rights1").prop('checked', true);
                     $("#Edituser-rights2").prop('checked', false);
+                    $("#Edituser-rights3").prop('checked', false);
                 }else if(response.admin == "0"){
                     $("#Edituser-rights1").prop('checked', false);
                     $("#Edituser-rights2").prop('checked', true);
+                    $("#Edituser-rights3").prop('checked', false);
+                }else if(response.admin == "2"){
+                    $("#Edituser-rights1").prop('checked', false);
+                    $("#Edituser-rights2").prop('checked', false);
+                    $("#Edituser-rights3").prop('checked', true);
                 }
             }
         });

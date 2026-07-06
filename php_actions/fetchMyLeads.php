@@ -87,12 +87,13 @@ function buildLeadOrderBy()
         3 => 'tblleads.email',
         4 => 'tblleads.phonenumber',
         5 => 'tblleads.city',
-        7 => 'tblleads.experiance',
-        8 => 'tblleads.csalary',
-        9 => 'tblleads.esalary',
-        10 => 'tblleads.nperiod',
-        11 => 'tblleads.dateadded',
-        13 => 'tblleadsstatus.name'
+        6 => 'tblleads.willing_to_relocate',
+        8 => 'tblleads.experiance',
+        9 => 'tblleads.csalary',
+        10 => 'tblleads.esalary',
+        11 => 'tblleads.nperiod',
+        12 => 'tblleads.dateadded',
+        14 => 'tblleadsstatus.name'
     );
 
     if (!isset($_POST['order'][0]['column'])) {
@@ -167,6 +168,7 @@ try {
         $leadEmail = isset($row['email']) ? $row['email'] : '';
         $leadPhone = isset($row['phonenumber']) ? $row['phonenumber'] : '';
         $leadCity = isset($row['city']) ? $row['city'] : '';
+        $leadWillingToRelocate = isset($row['willing_to_relocate']) ? $row['willing_to_relocate'] : '';
         $leadRoles = isset($row['roles']) ? $row['roles'] : '';
         $leadExperience = isset($row['experiance']) ? $row['experiance'] : '';
         $leadCurrentSalary = isset($row['csalary']) ? $row['csalary'] : '';
@@ -191,6 +193,7 @@ try {
             $leadEmail,
             $leadPhone,
             $leadCity,
+            $leadWillingToRelocate,
             getroletext($leadRoles),
             $leadExperience,
             $leadCurrentSalary,

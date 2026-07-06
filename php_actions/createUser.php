@@ -5,12 +5,19 @@ require_once 'core.php';
 $valid['success'] = array('success' => false, 'messages' => array());
 
 if($_POST) {	
+	if(!isset($_SESSION['accounttype']) || $_SESSION['accounttype'] !== 'superadmin'){
+		$valid['success'] = false;
+		$valid['messages'] = "Only Superadmin can add users.";
+		echo json_encode($valid);
+		exit();
+	}
+
 	$fname = $_POST['adduser-fname'];
 	$lname = $_POST['adduser-lname'];
   	$password = md5($_POST['adduser-password']);
   	$email = $_POST['adduser-email'];
   	$phone = $_POST['adduser-phone'];
-  	$rights = $_POST['rights'];
+  	$rights = (int) $_POST['rights'];
   	$status = $_POST['action'];
   	$date = date('Y-m-d H:i:s');
   	$sql1 = "SELECT * FROM `tblstaff` where email='".$email."'";

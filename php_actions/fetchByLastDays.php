@@ -64,9 +64,14 @@ function buildIntervalOrderBy()
         2 => 'tblleads.name',
         3 => 'tblleads.email',
         4 => 'tblleads.phonenumber',
-        5 => 'tblleads.dateadded',
-        7 => 'tblleadssources.name',
-        8 => 'tblleadsstatus.name'
+        5 => 'tblleads.city',
+        6 => 'tblleads.willing_to_relocate',
+        8 => 'tblleads.experiance',
+        9 => 'tblleads.csalary',
+        10 => 'tblleads.esalary',
+        11 => 'tblleads.nperiod',
+        12 => 'tblleads.dateadded',
+        14 => 'tblleadsstatus.name'
     );
 
     if (!isset($_POST['order'][0]['column'])) {
@@ -118,7 +123,7 @@ try {
     $recordsFiltered = isset($filteredRow['total']) ? (int) $filteredRow['total'] : 0;
     $filteredResult->close();
 
-    $sql = "SELECT tblleads.id, tblleads.name, tblleads.email, tblleads.phonenumber, tblleads.dateadded, tblleads.lastcontact, tblleadsstatus.name AS status_name, tblleadssources.name AS source_name" .
+    $sql = "SELECT tblleads.id, tblleads.name, tblleads.email, tblleads.phonenumber, tblleads.city, tblleads.willing_to_relocate, tblleads.roles, tblleads.experiance, tblleads.csalary, tblleads.esalary, tblleads.nperiod, tblleads.dateadded, tblleads.lastcontact, tblleadsstatus.name AS status_name, tblleadssources.name AS source_name, tblleads.resume" .
         $baseFrom .
         $whereClause .
         $orderClause .
@@ -138,16 +143,28 @@ try {
 
     while ($row = $result->fetch_assoc()) {
         $leadid = $row['id'];
-        $button = '<center><a data-target="#editMyLeadModal" onclick="editMyLead(' . $leadid . ')" data-toggle="modal" title="Edit User" class="btn btn-effect-ripple btn-xs btn-success"><i class="fa fa-pencil"></i></a>';
+        $leadResume = isset($row['resume']) ? $row['resume'] : '';
+        if (!empty($leadResume)) {
+            $resumeUrl = 'view_resume.php?file=' . rawurlencode($leadResume);
+            $button = '<center><a href="' . $resumeUrl . '" title="View Resume" target="_blank" class="btn btn-effect-ripple btn-xs btn-success"><i class="fa  fa-eye"></i></a><a data-target="#editMyLeadModal" onclick="editMyLead(' . $leadid . ')" data-toggle="modal" title="Edit User" class="btn btn-effect-ripple btn-xs btn-success"><i class="fa fa-pencil"></i></a>';
+        } else {
+            $button = '<center><a data-target="#editMyLeadModal" onclick="editMyLead(' . $leadid . ')" data-toggle="modal" title="Edit User" class="btn btn-effect-ripple btn-xs btn-success"><i class="fa fa-pencil"></i></a>';
+        }
         $output['data'][] = array(
             '<center><label class="csscheckbox csscheckbox-primary"><input type="checkbox" class="checkmark" name="leadcheckbox" value="' . $leadid . '"><span></span></label></center>',
             $button,
             '<a data-target="#editMyLeadModal" onclick="editMyLead(' . $leadid . ')" href="#" data-toggle="modal" title="' . $row['name'] . '">' . $row['name'] . '</a>',
             $row['email'],
             $row['phonenumber'],
+            isset($row['city']) ? $row['city'] : '',
+            isset($row['willing_to_relocate']) ? $row['willing_to_relocate'] : '',
+            getroletext(isset($row['roles']) ? $row['roles'] : ''),
+            isset($row['experiance']) ? $row['experiance'] : '',
+            isset($row['csalary']) ? $row['csalary'] : '',
+            isset($row['esalary']) ? $row['esalary'] : '',
+            isset($row['nperiod']) ? $row['nperiod'] : '',
             !empty($row['dateadded']) ? date("d M, Y", strtotime($row['dateadded'])) : '',
-            time_ago($row['lastcontact']),
-            $row['source_name'],
+            time_ago(isset($row['lastcontact']) ? $row['lastcontact'] : null),
             $row['status_name']
         );
     }

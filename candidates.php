@@ -133,6 +133,35 @@ div.dataTables_info{
     }
     to { opacity: 1;}
 }
+.candidate-view-note{
+    margin-bottom: 15px;
+    padding: 10px 14px;
+    border-left: 4px solid #5bc0de;
+    background: #eef9fd;
+    color: #31708f;
+    border-radius: 4px;
+    font-size: 13px;
+}
+.timeline-list .timeline-item-viewed .timeline-icon{
+    background: #5bc0de !important;
+}
+.timeline-list .timeline-item-viewed .timeline-content{
+    background: #eef9fd;
+    border-left: 4px solid #5bc0de;
+    padding: 12px 15px;
+    border-radius: 4px;
+}
+.timeline-list .timeline-item-viewed .push-bit{
+    margin-bottom: 5px;
+    color: #245269;
+}
+.candidate-activity-user{
+    display: inline-block;
+    margin-top: 4px;
+    color: #31708f;
+    font-size: 12px;
+    font-weight: 600;
+}
 </style>
 <!-- Page content -->
 <div id="page-content">
@@ -292,6 +321,7 @@ div.dataTables_info{
                         <th>Email</th>
                         <th>Phone number</th>
                         <th>City</th>
+                        <th>Willing to Relocate</th>
                         <th>Roles</th>
                         <th>Experience</th>
                         <th>Current CTC</th>
@@ -557,6 +587,9 @@ div.dataTables_info{
                                                         <div class="tab-pane" id="modal-tabs-settings">
                                                             <!-- Timeline Content -->
                                                             <div class="timeline block-content-full">
+                                                                <div class="candidate-view-note">
+                                                                    Highlighted entries show which team member opened this candidate profile.
+                                                                </div>
                                                                 <ul class="timeline-list">
 
                                                                     

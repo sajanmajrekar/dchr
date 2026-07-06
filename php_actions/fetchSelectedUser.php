@@ -2,6 +2,11 @@
 
 require_once 'core.php';
 
+if(!isset($_SESSION['accounttype']) || $_SESSION['accounttype'] !== 'superadmin'){
+    echo json_encode(array());
+    exit();
+}
+
 $UserId = $_POST['UserId'];
 
 $sql = "SELECT * FROM tblstaff WHERE staffid = $UserId";

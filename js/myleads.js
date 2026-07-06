@@ -360,7 +360,9 @@ $('#mailform').validate({
             });
 function editMyLead(Id = null) {
     $('#editleadform').get(0).reset();
-    gettimeline(Id);
+    logCandidateView(Id, function() {
+        gettimeline(Id);
+    });
     getcomment(Id);
     if(Id) {
         $.ajax({
@@ -414,6 +416,25 @@ function editMyLead(Id = null) {
             }
         });
     }
+}
+function logCandidateView(id, onComplete){
+    if(!id) {
+        if (typeof onComplete === 'function') {
+            onComplete();
+        }
+        return;
+    }
+
+    $.ajax({
+        url: 'php_actions/logCandidateView.php',
+        type: 'post',
+        data: {id: id},
+        dataType: 'json'
+    }).always(function() {
+        if (typeof onComplete === 'function') {
+            onComplete();
+        }
+    });
 }
 function gettimeline(id){
     if(id) {
