@@ -13,6 +13,10 @@
 include("includes/dbcon.php");
 require_once 'php_actions/core.php';
 include("includes/function.php");
+
+$gemini_resume_api_key = 'AIzaSyADjdzbCXw_qemsjp0YbfmYvx2yA807q28';
+$gemini_resume_model = 'gemini-3.5-flash';
+
 $template = array(
     'name'              => 'Digichefs - CRM',
     'version'           => '2.9',
@@ -100,6 +104,23 @@ $primary_nav = array(
                 'type'  => true,
             ),
      array(
+        'name'  => 'Resume Intelligence',
+        'icon'  => 'fa fa-file-text-o',
+        'type'  => true,
+        'sub'   => array(
+            array(
+                'name'  => 'Worker Monitor',
+                'url'   => 'resume_intelligence.php',
+                'type'  => true
+            ),
+            array(
+                'name'  => 'Resume Library',
+                'url'   => 'resume_library.php',
+                'type'  => true
+            )
+        )
+    ),
+     array(
         'name'  => 'Bulk Email',
         'icon'  => 'fa fa-envelope-o',
         'type'  => true,
@@ -183,6 +204,23 @@ $primary_nav = array(
                 'name'  => 'My Leads',
                 'url'   => 'my-leads.php',
                 'type'  => true,
+            )
+        )
+    ),
+     array(
+        'name'  => 'Resume Intelligence',
+        'icon'  => 'fa fa-file-text-o',
+        'type'  => true,
+        'sub'   => array(
+            array(
+                'name'  => 'Worker Monitor',
+                'url'   => 'resume_intelligence.php',
+                'type'  => true
+            ),
+            array(
+                'name'  => 'Resume Library',
+                'url'   => 'resume_library.php',
+                'type'  => true
             )
         )
     ),
