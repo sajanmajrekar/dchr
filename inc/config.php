@@ -14,8 +14,16 @@ include("includes/dbcon.php");
 require_once 'php_actions/core.php';
 include("includes/function.php");
 
-$gemini_resume_api_key = 'AIzaSyADjdzbCXw_qemsjp0YbfmYvx2yA807q28';
+$gemini_resume_api_key = 'AIzaSyDRiWi91248Fu0fCdi2xypFqZteD7jcIRw';
 $gemini_resume_model = 'gemini-3.5-flash';
+
+$resume_tika_java_path = '';
+$resume_tika_jar_path = '';
+
+$localConfigPath = __DIR__ . DIRECTORY_SEPARATOR . 'local_config.php';
+if (is_file($localConfigPath)) {
+    include $localConfigPath;
+}
 
 $template = array(
     'name'              => 'Digichefs - CRM',

@@ -72,6 +72,23 @@ if ($requestMethod === 'POST' && $action !== '') {
         }
 
         $aiResult = requestGeminiResumeInsights($hiringBrief, $candidateResult['rows'], $filters);
+        $candidateRowsForUi = array();
+        foreach ($candidateResult['rows'] as $candidateRow) {
+            $candidateRow['role_text'] = trim((string) getroletext((string) $candidateRow['roles']));
+            $candidateRow['dynamic_experience_label'] = formatDynamicExperienceLabel(
+                isset($candidateRow['experiance']) ? (string) $candidateRow['experiance'] : '',
+                isset($candidateRow['dateadded']) ? (string) $candidateRow['dateadded'] : ''
+            );
+            $candidateRow['formatted_apply_date'] = formatResumeApplyDate(
+                isset($candidateRow['dateadded']) ? (string) $candidateRow['dateadded'] : ''
+            );
+            $candidateRow['conversion_insight'] = buildResumeConversionInsight(
+                isset($candidateRow['dateadded']) ? (string) $candidateRow['dateadded'] : '',
+                isset($candidateRow['relevance_score']) ? (int) $candidateRow['relevance_score'] : 0
+            );
+            $candidateRowsForUi[] = $candidateRow;
+        }
+        $aiResult['candidate_rows'] = $candidateRowsForUi;
         if (!empty($aiResult['ok']) && !empty($aiResult['parsed']['all_candidates']) && is_array($aiResult['parsed']['all_candidates'])) {
             $insightMap = array();
             $nameMap = array();
@@ -440,20 +457,29 @@ if ($hasActiveFilters) {
                     $candidateEmail = trim((string) ($row['extracted_email'] !== '' ? $row['extracted_email'] : $row['lead_email']));
                     $candidatePhone = trim((string) ($row['extracted_phone'] !== '' ? $row['extracted_phone'] : $row['lead_phone']));
                     $experienceLabel = formatDynamicExperienceLabel((string) $row['experiance'], (string) $row['dateadded']);
+                    $applyDateLabel = formatResumeApplyDate((string) $row['dateadded']);
+                    $conversionInsight = buildResumeConversionInsight((string) $row['dateadded'], isset($row['relevance_score']) ? (int) $row['relevance_score'] : 0);
                     $skills = array_filter(array_map('trim', explode(',', (string) $row['extracted_skills'])));
                     $previewText = trim((string) $row['raw_text']);
                     if (strlen($previewText) > 340) {
                         $previewText = substr($previewText, 0, 340) . '...';
                     }
                     ?>
-                    <div class="candidate-card" data-lead-id="<?php echo (int) $row['lead_id']; ?>">
+                    <div class="candidate-card"
+                         data-lead-id="<?php echo (int) $row['lead_id']; ?>"
+                         data-resume-url="<?php echo resumeLibraryEsc('view_resume.php?file=' . rawurlencode((string) $row['original_resume_name'])); ?>"
+                         data-apply-date="<?php echo resumeLibraryEsc($applyDateLabel); ?>"
+                         data-conversion-label="<?php echo resumeLibraryEsc($conversionInsight['label']); ?>"
+                         data-conversion-reason="<?php echo resumeLibraryEsc($conversionInsight['reason']); ?>">
                         <div class="candidate-head">
                             <div>
                                 <div class="candidate-name"><?php echo resumeLibraryEsc($row['lead_name']); ?></div>
                                 <div class="candidate-meta">
                                     <strong>Email:</strong> <?php echo resumeLibraryEsc($candidateEmail !== '' ? $candidateEmail : '-'); ?><br>
                                     <strong>Phone:</strong> <?php echo resumeLibraryEsc($candidatePhone !== '' ? $candidatePhone : '-'); ?><br>
-                                    <strong>Role:</strong> <?php echo resumeLibraryEsc(trim((string) getroletext((string) $row['roles'])) !== '' ? trim((string) getroletext((string) $row['roles'])) : '-'); ?>
+                                    <strong>Role:</strong> <?php echo resumeLibraryEsc(trim((string) getroletext((string) $row['roles'])) !== '' ? trim((string) getroletext((string) $row['roles'])) : '-'); ?><br>
+                                    <strong>Applied:</strong> <?php echo resumeLibraryEsc($applyDateLabel); ?><br>
+                                    <strong>Conversion:</strong> <?php echo resumeLibraryEsc($conversionInsight['label']); ?>
                                 </div>
                             </div>
                             <div class="experience-pill"><?php echo resumeLibraryEsc($experienceLabel); ?></div>
@@ -535,6 +561,7 @@ if ($hasActiveFilters) {
                 <div id="modalCandidateQuestions" style="margin-bottom:12px;"></div>
                 <div id="modalCandidateRisks" style="margin-bottom:12px;"></div>
                 <div id="modalCandidateSystem" style="margin-bottom:12px;"></div>
+                <div id="modalCandidatePdf" style="margin-bottom:0;"></div>
             </div>
         </div>
     </div>
@@ -584,11 +611,40 @@ $(function () {
             $('#aiInsightMessage').text(response.message || 'Insights ready.');
             updateAiProgress(100, 'AI shortlist ready.');
             renderAiSummary(response.parsed || {});
+            if (Array.isArray(response.candidate_rows) && response.candidate_rows.length) {
+                renderCandidateCards(response.candidate_rows);
+                $('#candidateGrid').addClass('ai-mode');
+            }
 
-            if (response.insight_map && Object.keys(response.insight_map).length) {
-                sortCardsByAiScore(response.insight_map);
-                Object.keys(response.insight_map).forEach(function (leadId) {
-                    var item = response.insight_map[leadId];
+            var workingInsightMap = response.insight_map || {};
+            if ((!workingInsightMap || !Object.keys(workingInsightMap).length) && response.parsed && Array.isArray(response.parsed.all_candidates)) {
+                workingInsightMap = buildSequentialInsightMap(response.parsed.all_candidates);
+            }
+
+            if (response.candidate_errors) {
+                Object.keys(response.candidate_errors).forEach(function (leadId) {
+                    var $card = $('.candidate-card[data-lead-id="' + leadId + '"]');
+                    if (!$card.length) {
+                        return;
+                    }
+                    $card.addClass('ai-ready ai-collapsed');
+                    $card.find('.card-ai-score').text('Error');
+                    $card.find('.card-ai-why').html('<strong>AI Summary:</strong> ' + escapeHtml(response.candidate_errors[leadId]));
+                    $card.find('.card-ai-focus').html('<strong>Interview focus:</strong> Resume needs manual review.');
+                    $card.find('.card-ai-insight').addClass('is-visible');
+                    $card.data('aiPayload', {
+                        ai_generated_candidate_summary: response.candidate_errors[leadId],
+                        interview_focus: 'Resume needs manual review.',
+                        recommended_interview_questions: [],
+                        risk_indicators: ['AI PDF processing failed for this resume.']
+                    });
+                });
+            }
+
+            if (workingInsightMap && Object.keys(workingInsightMap).length) {
+                sortCardsByAiScore(workingInsightMap);
+                Object.keys(workingInsightMap).forEach(function (leadId) {
+                    var item = workingInsightMap[leadId];
                     var $card = $('.candidate-card[data-lead-id="' + leadId + '"]');
                     if (!$card.length) {
                         return;
@@ -625,13 +681,22 @@ $(function () {
     $(document).on('click', '.card-open-modal', function () {
         var $card = $(this).closest('.candidate-card');
         var aiPayload = $card.data('aiPayload') || {};
+        var resumeUrl = $card.attr('data-resume-url') || '';
+        var applyDate = $card.attr('data-apply-date') || 'Not available';
+        var conversionLabel = $card.attr('data-conversion-label') || 'Needs review';
+        var conversionReason = $card.attr('data-conversion-reason') || 'Manual review recommended.';
         $('#modalCandidateName').text($card.find('.candidate-name').text());
         $('#modalCandidateScore').html('<strong>Candidate match score:</strong> ' + escapeHtml($card.find('.card-ai-score').text()));
         $('#modalCandidateAiSummary').html('<strong>AI-generated candidate summary:</strong> ' + escapeHtml(aiPayload.ai_generated_candidate_summary || 'Not available'));
-        $('#modalCandidateAiInsight').html('<strong>Interview readiness score:</strong> ' + escapeHtml(String(aiPayload.interview_readiness_score || 'Not available')) + '<br><strong>Interview focus:</strong> ' + escapeHtml(aiPayload.interview_focus || 'Not available'));
+        $('#modalCandidateAiInsight').html('<strong>Interview readiness score:</strong> ' + escapeHtml(String(aiPayload.interview_readiness_score || 'Not available')) + '<br><strong>Interview focus:</strong> ' + escapeHtml(aiPayload.interview_focus || 'Not available') + '<br><strong>Applied date:</strong> ' + escapeHtml(applyDate) + '<br><strong>Conversion likelihood:</strong> ' + escapeHtml(conversionLabel) + '<br><strong>Why:</strong> ' + escapeHtml(conversionReason));
         $('#modalCandidateQuestions').html('<strong>Recommended interview questions:</strong><br>' + renderList(aiPayload.recommended_interview_questions));
         $('#modalCandidateRisks').html('<strong>Risk indicators:</strong><br>' + renderList(aiPayload.risk_indicators));
         $('#modalCandidateSystem').html('<strong>System data:</strong><br>' + $card.find('.candidate-meta').html() + '<br><br><strong>Resume preview:</strong><br>' + $card.find('.resume-preview').html());
+        if (resumeUrl !== '') {
+            $('#modalCandidatePdf').html('<strong>Resume PDF:</strong><div style="margin-top:10px; border:1px solid #dfe5ee; border-radius:8px; overflow:hidden;"><iframe src="' + escapeHtml(resumeUrl) + '" style="width:100%; height:520px; border:0;"></iframe></div>');
+        } else {
+            $('#modalCandidatePdf').html('<strong>Resume PDF:</strong><br><span class="text-muted">Resume preview not available.</span>');
+        }
         $('#candidateInsightModal').modal('show');
     });
 
@@ -674,6 +739,67 @@ $(function () {
         $.each($cards, function (_, card) {
             $('#candidateGrid').append(card);
         });
+    }
+
+    function buildSequentialInsightMap(allCandidates) {
+        var map = {};
+        var $cards = $('.candidate-card');
+        $cards.each(function (index) {
+            if (!allCandidates[index]) {
+                return;
+            }
+            var leadId = String($(this).data('lead-id'));
+            map[leadId] = allCandidates[index];
+        });
+        return map;
+    }
+
+    function renderCandidateCards(rows) {
+        var html = '';
+        rows.forEach(function (row) {
+            var candidateEmail = row.extracted_email && row.extracted_email.trim() !== '' ? row.extracted_email : (row.lead_email || '-');
+            var candidatePhone = row.extracted_phone && row.extracted_phone.trim() !== '' ? row.extracted_phone : (row.lead_phone || '-');
+            var roleText = row.role_text && row.role_text.trim() !== '' ? row.role_text : '-';
+            var experienceLabel = row.dynamic_experience_label && row.dynamic_experience_label.trim() !== '' ? row.dynamic_experience_label : (row.experiance && row.experiance.trim() !== '' ? row.experiance : 'Not available');
+            var applyDateLabel = row.formatted_apply_date && row.formatted_apply_date.trim() !== '' ? row.formatted_apply_date : 'Not available';
+            var conversionLabel = row.conversion_insight && row.conversion_insight.label ? row.conversion_insight.label : 'Needs review';
+            var conversionReason = row.conversion_insight && row.conversion_insight.reason ? row.conversion_insight.reason : 'Manual review recommended.';
+            var previewText = row.raw_text || 'Preview not available yet.';
+            if (previewText.length > 340) {
+                previewText = previewText.substring(0, 340) + '...';
+            }
+
+            var skillsHtml = '<span class="text-muted">No extracted skills yet</span>';
+            if (row.extracted_skills && row.extracted_skills.trim() !== '') {
+                var parts = [];
+                row.extracted_skills.split(',').forEach(function (skill, index) {
+                    if (index < 10 && skill.trim() !== '') {
+                        parts.push('<span class="label label-info">' + escapeHtml(skill.trim()) + '</span>');
+                    }
+                });
+                if (parts.length) {
+                    skillsHtml = parts.join(' ');
+                }
+            }
+
+            html += '<div class="candidate-card" data-lead-id="' + escapeHtml(String(row.lead_id || '')) + '" data-resume-url="view_resume.php?file=' + encodeURIComponent(row.original_resume_name || '') + '" data-apply-date="' + escapeHtml(applyDateLabel) + '" data-conversion-label="' + escapeHtml(conversionLabel) + '" data-conversion-reason="' + escapeHtml(conversionReason) + '">';
+            html += '<div class="candidate-head">';
+            html += '<div>';
+            html += '<div class="candidate-name">' + escapeHtml(row.lead_name || '') + '</div>';
+            html += '<div class="candidate-meta"><strong>Email:</strong> ' + escapeHtml(candidateEmail) + '<br><strong>Phone:</strong> ' + escapeHtml(candidatePhone) + '<br><strong>Role:</strong> ' + escapeHtml(roleText) + '<br><strong>Applied:</strong> ' + escapeHtml(applyDateLabel) + '<br><strong>Conversion:</strong> ' + escapeHtml(conversionLabel) + '</div>';
+            html += '</div>';
+            html += '<div class="experience-pill">' + escapeHtml(experienceLabel) + '</div>';
+            html += '</div>';
+            html += '<div class="card-score-row"><div><strong>AI Score</strong> <span class="label label-success card-ai-score">Pending</span></div><button type="button" class="btn btn-xs btn-info card-open-modal">View Details</button></div>';
+            html += '<div class="card-system-data">';
+            html += '<div class="skills-wrap">' + skillsHtml + '</div>';
+            html += '<div class="resume-preview">' + escapeHtml(previewText).replace(/\n/g, '<br>') + '</div>';
+            html += '<div style="margin-top:14px;"><a href="view_resume.php?file=' + encodeURIComponent(row.original_resume_name || '') + '" target="_blank" class="btn btn-success btn-sm"><i class="fa fa-eye"></i> Open Resume</a> <a href="candidates.php" class="btn btn-default btn-sm"><i class="fa fa-users"></i> Candidates Page</a></div>';
+            html += '</div>';
+            html += '<div class="card-ai-insight"><strong>AI Insight</strong><div class="card-ai-why"></div><div class="card-ai-focus"></div></div>';
+            html += '</div>';
+        });
+        $('#candidateGrid').html(html);
     }
 
     function renderAiSummary(parsed) {
