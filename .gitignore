@@ -2,3 +2,6 @@ img/
 resume/
 includes/
 php_actions/db_connect.php
+data/tools/
+data/resume_intelligence_config.json
+data/gemini_resume_config.json
