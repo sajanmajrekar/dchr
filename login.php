@@ -49,7 +49,7 @@ if($result->num_rows > 0) {
         <!-- END Login Title -->
 
         <!-- Login Form -->
-        <form id="form-login" action="/hr/php_actions/checklogin.php" method="post" class="form-horizontal">
+        <form id="form-login" action="/newhr/php_actions/checklogin.php" method="post" class="form-horizontal">
             <div class="form-group">
                 <label for="login-email" class="col-xs-12">Email</label>
                 <div class="col-xs-12">
