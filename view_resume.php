@@ -28,16 +28,14 @@ if (($filePath === '' || !is_file($filePath) || !is_readable($filePath)) && isse
     if ($stmt) {
         $stmt->bind_param('s', $resumeFile);
         if ($stmt->execute()) {
-            $result = $stmt->get_result();
-            if ($result) {
-                $row = $result->fetch_assoc();
-                if ($row) {
-                    $filePath = resolveResumeAbsolutePath(
-                        isset($row['original_resume_name']) ? (string) $row['original_resume_name'] : $resumeFile,
-                        isset($row['file_path']) ? (string) $row['file_path'] : ''
-                    );
-                }
-                $result->free();
+            $dbFilePath = '';
+            $dbOriginalName = '';
+            $stmt->bind_result($dbFilePath, $dbOriginalName);
+            if ($stmt->fetch()) {
+                $filePath = resolveResumeAbsolutePath(
+                    $dbOriginalName !== '' ? (string) $dbOriginalName : $resumeFile,
+                    $dbFilePath !== '' ? (string) $dbFilePath : ''
+                );
             }
         }
         $stmt->close();
