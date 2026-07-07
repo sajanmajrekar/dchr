@@ -75,12 +75,13 @@ if ($requestMethod === 'POST' && $action !== '') {
         $hiringBrief .= "\nRole filter ID: " . (int) $filters['role'];
         $hiringBrief .= "\nTask: Review the top search results and explain fit for this search.";
 
+        $uiResultLimit = 10;
         $aiBatchLimit = 4;
         $candidateResult = fetchResumeSearchResults($connect, array(
             'q' => $filters['q'],
             'role' => $filters['role'],
             'status' => 'completed'
-        ), 1, $aiBatchLimit);
+        ), 1, $uiResultLimit);
 
         if (empty($candidateResult['rows'])) {
             resumeLibraryJson(array(
@@ -89,7 +90,8 @@ if ($requestMethod === 'POST' && $action !== '') {
             ));
         }
 
-        $aiResult = requestGeminiResumeInsights($hiringBrief, $candidateResult['rows'], $filters);
+        $aiInputRows = array_slice($candidateResult['rows'], 0, $aiBatchLimit);
+        $aiResult = requestGeminiResumeInsights($hiringBrief, $aiInputRows, $filters);
         $candidateRowsForUi = array();
         foreach ($candidateResult['rows'] as $candidateRow) {
             $candidateRow['role_text'] = trim((string) getroletext((string) $candidateRow['roles']));
@@ -112,7 +114,7 @@ if ($requestMethod === 'POST' && $action !== '') {
             $insightMap = array();
             $nameMap = array();
             $candidateIds = array();
-            foreach ($candidateResult['rows'] as $candidateRow) {
+            foreach ($aiInputRows as $candidateRow) {
                 $normalizedName = normalizeResumeCandidateKey(isset($candidateRow['lead_name']) ? $candidateRow['lead_name'] : '');
                 if ($normalizedName !== '') {
                     $nameMap[$normalizedName] = (int) $candidateRow['lead_id'];
@@ -502,6 +504,7 @@ if ($hasActiveFilters) {
                     <div class="candidate-card"
                          data-lead-id="<?php echo (int) $row['lead_id']; ?>"
                          data-resume-url="<?php echo resumeLibraryEsc('view_resume.php?file=' . rawurlencode((string) $row['original_resume_name'])); ?>"
+                         data-file-extension="<?php echo resumeLibraryEsc((string) $row['file_extension']); ?>"
                          data-apply-date="<?php echo resumeLibraryEsc($applyDateLabel); ?>"
                          data-conversion-label="<?php echo resumeLibraryEsc($conversionInsight['label']); ?>"
                          data-conversion-reason="<?php echo resumeLibraryEsc($conversionInsight['reason']); ?>">
@@ -599,20 +602,20 @@ if ($hasActiveFilters) {
             </div>
         </div>
     </div>
+</div>
 
-    <div class="resume-panel">
-        <h3 class="side-title">Error Logs</h3>
-        <p class="text-muted" style="margin-top:-4px;">These logs are written by the new resume viewer and Gemini error handlers. Reproduce the issue on live, then refresh this page.</p>
+<div class="resume-panel">
+    <h3 class="side-title">Error Logs</h3>
+    <p class="text-muted" style="margin-top:-4px;">These logs are written by the new resume viewer and Gemini error handlers. Reproduce the issue on live, then refresh this page.</p>
 
-        <div class="row">
-            <div class="col-md-6">
-                <h4 style="margin-top:0;">Gemini Log</h4>
-                <div class="log-box"><?php echo !empty($geminiLogLines) ? resumeLibraryEsc(implode("\n", $geminiLogLines)) : 'No gemini_resume.log entries yet.'; ?></div>
-            </div>
-            <div class="col-md-6">
-                <h4 style="margin-top:0;">Resume Viewer Log</h4>
-                <div class="log-box"><?php echo !empty($viewResumeLogLines) ? resumeLibraryEsc(implode("\n", $viewResumeLogLines)) : 'No view_resume.log entries yet.'; ?></div>
-            </div>
+    <div class="row">
+        <div class="col-md-6">
+            <h4 style="margin-top:0;">Gemini Log</h4>
+            <div class="log-box"><?php echo !empty($geminiLogLines) ? resumeLibraryEsc(implode("\n", $geminiLogLines)) : 'No gemini_resume.log entries yet.'; ?></div>
+        </div>
+        <div class="col-md-6">
+            <h4 style="margin-top:0;">Resume Viewer Log</h4>
+            <div class="log-box"><?php echo !empty($viewResumeLogLines) ? resumeLibraryEsc(implode("\n", $viewResumeLogLines)) : 'No view_resume.log entries yet.'; ?></div>
         </div>
     </div>
 </div>
@@ -740,10 +743,13 @@ $(function () {
         });
     });
 
-    $(document).on('click', '.card-open-modal', function () {
+    $(document).on('click', '.card-open-modal', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
         var $card = $(this).closest('.candidate-card');
         var aiPayload = $card.data('aiPayload') || {};
         var resumeUrl = $card.attr('data-resume-url') || '';
+        var fileExtension = String($card.attr('data-file-extension') || '').toLowerCase();
         var applyDate = $card.attr('data-apply-date') || 'Not available';
         var conversionLabel = $card.attr('data-conversion-label') || 'Needs review';
         var conversionReason = $card.attr('data-conversion-reason') || 'Manual review recommended.';
@@ -754,8 +760,10 @@ $(function () {
         $('#modalCandidateQuestions').html('<strong>Recommended interview questions:</strong><br>' + renderList(aiPayload.recommended_interview_questions));
         $('#modalCandidateRisks').html('<strong>Risk indicators:</strong><br>' + renderList(aiPayload.risk_indicators));
         $('#modalCandidateSystem').html('<strong>System data:</strong><br>' + $card.find('.candidate-meta').html() + '<br><br><strong>Resume preview:</strong><br>' + $card.find('.resume-preview').html());
-        if (resumeUrl !== '') {
+        if (resumeUrl !== '' && fileExtension === 'pdf') {
             $('#modalCandidatePdf').html('<strong>Resume PDF:</strong><div style="margin-top:10px; border:1px solid #dfe5ee; border-radius:8px; overflow:hidden;"><iframe src="' + escapeHtml(resumeUrl) + '" style="width:100%; height:520px; border:0;"></iframe></div>');
+        } else if (resumeUrl !== '') {
+            $('#modalCandidatePdf').html('<strong>Resume Preview:</strong><br><span class="text-muted">Inline preview is available only for PDF resumes.</span><div style="margin-top:10px;"><a href="' + escapeHtml(resumeUrl) + '" target="_blank" class="btn btn-success btn-sm"><i class="fa fa-external-link"></i> Open Resume in New Tab</a></div>');
         } else {
             $('#modalCandidatePdf').html('<strong>Resume PDF:</strong><br><span class="text-muted">Resume preview not available.</span>');
         }
@@ -844,7 +852,7 @@ $(function () {
                 }
             }
 
-            html += '<div class="candidate-card" data-lead-id="' + escapeHtml(String(row.lead_id || '')) + '" data-resume-url="view_resume.php?file=' + encodeURIComponent(row.original_resume_name || '') + '" data-apply-date="' + escapeHtml(applyDateLabel) + '" data-conversion-label="' + escapeHtml(conversionLabel) + '" data-conversion-reason="' + escapeHtml(conversionReason) + '">';
+            html += '<div class="candidate-card" data-lead-id="' + escapeHtml(String(row.lead_id || '')) + '" data-resume-url="view_resume.php?file=' + encodeURIComponent(row.original_resume_name || '') + '" data-file-extension="' + escapeHtml(String(row.file_extension || '')) + '" data-apply-date="' + escapeHtml(applyDateLabel) + '" data-conversion-label="' + escapeHtml(conversionLabel) + '" data-conversion-reason="' + escapeHtml(conversionReason) + '">';
             html += '<div class="candidate-head">';
             html += '<div>';
             html += '<div class="candidate-name">' + escapeHtml(row.lead_name || '') + '</div>';

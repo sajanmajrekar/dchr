@@ -72,12 +72,15 @@ try {
 
     $contentType = isset($contentTypes[$extension]) ? $contentTypes[$extension] : 'application/octet-stream';
     $fileSize = @filesize($filePath);
+    $downloadName = basename($resumeFile);
+    $encodedDownloadName = rawurlencode($downloadName);
+    $dispositionType = $extension === 'pdf' ? 'inline' : 'attachment';
 
     header('Content-Type: ' . $contentType);
     if ($fileSize !== false) {
         header('Content-Length: ' . $fileSize);
     }
-    header('Content-Disposition: inline; filename="' . rawurlencode($resumeFile) . '"');
+    header('Content-Disposition: ' . $dispositionType . '; filename="' . addcslashes($downloadName, '"\\') . '"; filename*=UTF-8\'\'' . $encodedDownloadName);
     header('X-Content-Type-Options: nosniff');
 
     if (@readfile($filePath) === false) {
