@@ -17,7 +17,15 @@ function resumeLibraryJson($payload)
         @ob_end_clean();
     }
     header('Content-Type: application/json');
-    echo json_encode($payload);
+    $json = resumeJsonEncode($payload, JSON_UNESCAPED_SLASHES);
+    if (!is_string($json) || $json === '') {
+        resumeIntelligenceLog('resume_library', 'Failed to encode AJAX JSON response.', array(
+            'json_last_error' => function_exists('json_last_error_msg') ? json_last_error_msg() : 'Unknown JSON error'
+        ));
+        echo '{"ok":false,"message":"Server could not encode the AI response as valid JSON."}';
+        exit();
+    }
+    echo $json;
     exit();
 }
 
