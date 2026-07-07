@@ -142,6 +142,8 @@ $perPage = 10;
 $stats = fetchResumeDocumentStats($connect);
 $queueStats = fetchResumeQueueStats($connect);
 $roleOptions = fetchResumeRoleOptions($connect);
+$geminiLogLines = getResumeIntelligenceLogTail('gemini_resume', 15);
+$viewResumeLogLines = getResumeIntelligenceLogTail('view_resume', 15);
 $hasActiveFilters = resumeLibraryHasActiveFilters($filters);
 $results = array(
     'rows' => array(),
@@ -248,6 +250,19 @@ if ($hasActiveFilters) {
     .candidate-meta {
         color: #5c6677;
         line-height: 1.7;
+    }
+    .log-box {
+        background: #0f172a;
+        color: #dbe4f0;
+        border-radius: 8px;
+        padding: 14px;
+        font-family: Consolas, Monaco, monospace;
+        font-size: 12px;
+        line-height: 1.6;
+        max-height: 260px;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
     }
     .experience-pill {
         display: inline-block;
@@ -571,6 +586,22 @@ if ($hasActiveFilters) {
                 <div id="modalCandidateRisks" style="margin-bottom:12px;"></div>
                 <div id="modalCandidateSystem" style="margin-bottom:12px;"></div>
                 <div id="modalCandidatePdf" style="margin-bottom:0;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="resume-panel">
+        <h3 class="side-title">Error Logs</h3>
+        <p class="text-muted" style="margin-top:-4px;">These logs are written by the new resume viewer and Gemini error handlers. Reproduce the issue on live, then refresh this page.</p>
+
+        <div class="row">
+            <div class="col-md-6">
+                <h4 style="margin-top:0;">Gemini Log</h4>
+                <div class="log-box"><?php echo !empty($geminiLogLines) ? resumeLibraryEsc(implode("\n", $geminiLogLines)) : 'No gemini_resume.log entries yet.'; ?></div>
+            </div>
+            <div class="col-md-6">
+                <h4 style="margin-top:0;">Resume Viewer Log</h4>
+                <div class="log-box"><?php echo !empty($viewResumeLogLines) ? resumeLibraryEsc(implode("\n", $viewResumeLogLines)) : 'No view_resume.log entries yet.'; ?></div>
             </div>
         </div>
     </div>
