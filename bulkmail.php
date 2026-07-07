@@ -356,7 +356,7 @@ div.dataTables_info{
     </div>
     <!-- END Datatables Block -->
 </div>
-<!-- END Page Content -->
+<!-- END Page Contentt-->
 
                 
 <?php include 'inc/page_footer.php'; ?>
