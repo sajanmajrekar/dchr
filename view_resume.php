@@ -1,5 +1,5 @@
 <?php
-include 'inc/config.php';
+require_once 'php_actions/db_connect.php';
 require_once 'includes/resume_intelligence.php';
 
 $resumeParam = isset($_GET['file']) ? trim((string) $_GET['file']) : '';
