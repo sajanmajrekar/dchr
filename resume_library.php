@@ -67,11 +67,12 @@ if ($requestMethod === 'POST' && $action !== '') {
         $hiringBrief .= "\nRole filter ID: " . (int) $filters['role'];
         $hiringBrief .= "\nTask: Review the top search results and explain fit for this search.";
 
+        $aiBatchLimit = 4;
         $candidateResult = fetchResumeSearchResults($connect, array(
             'q' => $filters['q'],
             'role' => $filters['role'],
             'status' => 'completed'
-        ), 1, 10);
+        ), 1, $aiBatchLimit);
 
         if (empty($candidateResult['rows'])) {
             resumeLibraryJson(array(
@@ -98,6 +99,7 @@ if ($requestMethod === 'POST' && $action !== '') {
             $candidateRowsForUi[] = $candidateRow;
         }
         $aiResult['candidate_rows'] = $candidateRowsForUi;
+        $aiResult['ai_batch_limit'] = $aiBatchLimit;
         if (!empty($aiResult['ok']) && !empty($aiResult['parsed']['all_candidates']) && is_array($aiResult['parsed']['all_candidates'])) {
             $insightMap = array();
             $nameMap = array();
@@ -633,7 +635,7 @@ $(function () {
         $('.card-ai-why').html('');
         $('.card-ai-focus').html('');
         $('#aiProgressWrap').addClass('is-visible');
-        updateAiProgress(8, 'Preparing top 10 matches...');
+        updateAiProgress(8, 'Preparing top matches for AI review...');
         startAiProgressAnimation();
 
         $.post('resume_library.php', {
@@ -642,6 +644,11 @@ $(function () {
             role: $('#role').val()
         }, function (response) {
             stopAiProgressAnimation();
+            if (Array.isArray(response.candidate_rows) && response.candidate_rows.length) {
+                renderCandidateCards(response.candidate_rows);
+                $('#candidateGrid').addClass('ai-mode');
+            }
+
             if (!response.ok) {
                 $('#aiInsightMessage').text(response.message || 'Could not generate AI insights.');
                 updateAiProgress(100, 'AI search failed.');
@@ -651,10 +658,6 @@ $(function () {
             $('#aiInsightMessage').text(response.message || 'Insights ready.');
             updateAiProgress(100, 'AI shortlist ready.');
             renderAiSummary(response.parsed || {});
-            if (Array.isArray(response.candidate_rows) && response.candidate_rows.length) {
-                renderCandidateCards(response.candidate_rows);
-                $('#candidateGrid').addClass('ai-mode');
-            }
 
             var workingInsightMap = response.insight_map || {};
             if ((!workingInsightMap || !Object.keys(workingInsightMap).length) && response.parsed && Array.isArray(response.parsed.all_candidates)) {
