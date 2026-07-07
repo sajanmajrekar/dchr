@@ -1,4 +1,6 @@
 <?php
+include 'inc/config.php';
+require_once 'includes/resume_intelligence.php';
 
 $resumeParam = isset($_GET['file']) ? trim((string) $_GET['file']) : '';
 
@@ -19,7 +21,28 @@ if ($resumeFile === '' || $resumeFile === '.' || $resumeFile === '..') {
     exit('Resume not found.');
 }
 
-$filePath = __DIR__ . DIRECTORY_SEPARATOR . 'resume' . DIRECTORY_SEPARATOR . $resumeFile;
+$filePath = resolveResumeAbsolutePath($resumeFile);
+
+if (($filePath === '' || !is_file($filePath) || !is_readable($filePath)) && isset($connect) && $connect instanceof mysqli) {
+    $stmt = $connect->prepare("SELECT file_path, original_resume_name FROM resume_documents WHERE original_resume_name = ? ORDER BY id DESC LIMIT 1");
+    if ($stmt) {
+        $stmt->bind_param('s', $resumeFile);
+        if ($stmt->execute()) {
+            $result = $stmt->get_result();
+            if ($result) {
+                $row = $result->fetch_assoc();
+                if ($row) {
+                    $filePath = resolveResumeAbsolutePath(
+                        isset($row['original_resume_name']) ? (string) $row['original_resume_name'] : $resumeFile,
+                        isset($row['file_path']) ? (string) $row['file_path'] : ''
+                    );
+                }
+                $result->free();
+            }
+        }
+        $stmt->close();
+    }
+}
 
 if (!is_file($filePath) || !is_readable($filePath)) {
     http_response_code(404);

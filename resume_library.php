@@ -673,7 +673,18 @@ $(function () {
             }
         }, 'json').fail(function () {
             stopAiProgressAnimation();
-            $('#aiInsightMessage').text('Gemini request failed.');
+            var errorText = 'Gemini request failed.';
+            if (arguments.length > 0 && arguments[0]) {
+                var xhr = arguments[0];
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorText = xhr.responseJSON.message;
+                } else if (xhr.responseText) {
+                    errorText = 'Gemini request failed: ' + String(xhr.responseText).replace(/\s+/g, ' ').substring(0, 220);
+                } else if (xhr.status) {
+                    errorText = 'Gemini request failed. HTTP ' + xhr.status;
+                }
+            }
+            $('#aiInsightMessage').text(errorText);
             updateAiProgress(100, 'AI search failed.');
         });
     });
