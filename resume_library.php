@@ -154,8 +154,6 @@ $perPage = 10;
 $stats = fetchResumeDocumentStats($connect);
 $queueStats = fetchResumeQueueStats($connect);
 $roleOptions = fetchResumeRoleOptions($connect);
-$geminiLogLines = getResumeIntelligenceLogTail('gemini_resume', 15);
-$viewResumeLogLines = getResumeIntelligenceLogTail('view_resume', 15);
 $hasActiveFilters = resumeLibraryHasActiveFilters($filters);
 $results = array(
     'rows' => array(),
@@ -263,19 +261,6 @@ if ($hasActiveFilters) {
         color: #5c6677;
         line-height: 1.7;
     }
-    .log-box {
-        background: #0f172a;
-        color: #dbe4f0;
-        border-radius: 8px;
-        padding: 14px;
-        font-family: Consolas, Monaco, monospace;
-        font-size: 12px;
-        line-height: 1.6;
-        max-height: 260px;
-        overflow: auto;
-        white-space: pre-wrap;
-        word-break: break-word;
-    }
     .experience-pill {
         display: inline-block;
         background: #e8f6ef;
@@ -378,6 +363,27 @@ if ($hasActiveFilters) {
         border: 1px solid #e3edf7;
         border-radius: 8px;
         padding: 14px;
+    }
+    .ai-heatmap-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: flex-start;
+        margin-top: 8px;
+    }
+    .ai-heatmap-list .label {
+        display: inline-flex;
+        max-width: 100%;
+        white-space: normal;
+        line-height: 1.4;
+        text-align: left;
+    }
+    .ai-summary-copy {
+        margin-top: 8px;
+        color: #4d5768;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-break: break-word;
     }
     @media (max-width: 991px) {
         .candidate-grid.ai-mode {
@@ -600,22 +606,6 @@ if ($hasActiveFilters) {
                 <div id="modalCandidateSystem" style="margin-bottom:12px;"></div>
                 <div id="modalCandidatePdf" style="margin-bottom:0;"></div>
             </div>
-        </div>
-    </div>
-</div>
-
-<div class="resume-panel">
-    <h3 class="side-title">Error Logs</h3>
-    <p class="text-muted" style="margin-top:-4px;">These logs are written by the new resume viewer and Gemini error handlers. Reproduce the issue on live, then refresh this page.</p>
-
-    <div class="row">
-        <div class="col-md-6">
-            <h4 style="margin-top:0;">Gemini Log</h4>
-            <div class="log-box"><?php echo !empty($geminiLogLines) ? resumeLibraryEsc(implode("\n", $geminiLogLines)) : 'No gemini_resume.log entries yet.'; ?></div>
-        </div>
-        <div class="col-md-6">
-            <h4 style="margin-top:0;">Resume Viewer Log</h4>
-            <div class="log-box"><?php echo !empty($viewResumeLogLines) ? resumeLibraryEsc(implode("\n", $viewResumeLogLines)) : 'No view_resume.log entries yet.'; ?></div>
         </div>
     </div>
 </div>
@@ -877,8 +867,8 @@ $(function () {
         $('#aiSummaryText').text(parsed.summary || 'AI shortlist generated.');
         $('#aiTopFiveList').html(renderTopFive(parsed.top_5_recommended_candidates || []));
         $('#aiSkillsHeatmap').html(renderSkillsHeatmap(parsed.skills_heatmap || []));
-        $('#aiExperienceDistribution').html(escapeHtml(parsed.experience_distribution || 'Not available'));
-        $('#aiNoticePeriodAnalysis').html(escapeHtml(parsed.notice_period_analysis || 'Not available'));
+        $('#aiExperienceDistribution').html(renderSummaryValue(parsed.experience_distribution));
+        $('#aiNoticePeriodAnalysis').html(renderSummaryValue(parsed.notice_period_analysis));
     }
 
     function renderTopFive(items) {
@@ -897,15 +887,33 @@ $(function () {
         if (!Array.isArray(items) || !items.length) {
             return '<span class="text-muted">Not available</span>';
         }
-        var html = '';
+        var html = '<div class="ai-heatmap-list">';
         items.forEach(function (item) {
             if (typeof item === 'string') {
-                html += '<span class="label label-info" style="margin-right:6px;">' + escapeHtml(item) + '</span>';
+                html += '<span class="label label-info">' + escapeHtml(item) + '</span>';
             } else {
-                html += '<span class="label label-info" style="margin-right:6px;">' + escapeHtml((item.skill || 'Skill') + ' - ' + (item.strength || '')) + '</span>';
+                html += '<span class="label label-info">' + escapeHtml((item.skill || 'Skill') + ' - ' + (item.strength || '')) + '</span>';
             }
         });
+        html += '</div>';
         return html;
+    }
+
+    function renderSummaryValue(value) {
+        if (Array.isArray(value)) {
+            return renderList(value);
+        }
+        if (value && typeof value === 'object') {
+            var lines = [];
+            Object.keys(value).forEach(function (key) {
+                lines.push('<strong>' + escapeHtml(key) + ':</strong> ' + escapeHtml(value[key]));
+            });
+            return lines.length ? '<div class="ai-summary-copy">' + lines.join('<br>') + '</div>' : '<span class="text-muted">Not available</span>';
+        }
+        if (value === null || typeof value === 'undefined' || String(value).trim() === '') {
+            return '<span class="text-muted">Not available</span>';
+        }
+        return '<div class="ai-summary-copy">' + escapeHtml(String(value)) + '</div>';
     }
 
     function renderList(items) {
