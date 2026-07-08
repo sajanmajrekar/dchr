@@ -54,7 +54,7 @@ $stats = fetchResumeDocumentStats($connect);
 $queueStats = fetchResumeQueueStats($connect);
 $parserStatus = getResumeParserStatus();
 
-$defaultWorkerLimit = !empty($workerState['worker_limit']) ? (int) $workerState['worker_limit'] : 200;
+$defaultWorkerLimit = !empty($workerState['worker_limit']) ? (int) $workerState['worker_limit'] : 1000;
 if ($defaultWorkerLimit <= 0) {
     $defaultWorkerLimit = 200;
 }
@@ -193,8 +193,8 @@ $manualWorkerCommand = 'C:\\xampp\\php\\php.exe C:\\xampp\\htdocs\\hr\\resume_wo
 
                 <div class="form-group">
                     <label for="worker_limit">Worker chunk size</label>
-                    <input type="number" min="10" max="500" class="form-control" id="worker_limit" value="<?php echo (int) $defaultWorkerLimit; ?>" style="max-width:180px;">
-                    <p style="margin-top:8px; color:#777; font-size:12px;">Allowed range: 10 to 500 resumes per batch.</p>
+                    <input type="number" min="10" max="1000" class="form-control" id="worker_limit" value="<?php echo (int) $defaultWorkerLimit; ?>" style="max-width:180px;">
+                    <p style="margin-top:8px; color:#777; font-size:12px;">Allowed range: 10 to 1000 resumes per batch.</p>
                 </div>
 
                 <div class="form-group">
@@ -406,12 +406,12 @@ var parserStatus = <?php echo json_encode($parserStatus, JSON_UNESCAPED_SLASHES)
 var pollTimer = null;
 
 function renderManualCommand() {
-    var limit = parseInt($('#worker_limit').val() || 200, 10);
+    var limit = parseInt($('#worker_limit').val() || 1000, 10);
     if (!limit || limit < 10) {
-        limit = 200;
+        limit = 1000;
     }
-    if (limit > 500) {
-        limit = 500;
+    if (limit > 1000) {
+        limit = 1000;
     }
     $('#worker_limit').val(limit);
     var token = 'manualrun_' + Date.now();

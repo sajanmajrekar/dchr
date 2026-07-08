@@ -13,7 +13,7 @@ if (!ensureResumeIntelligenceTables($connect)) {
     exit(1);
 }
 
-$limit = 200;
+$limit = 1000;
 $token = '';
 
 foreach ($argv as $argument) {
