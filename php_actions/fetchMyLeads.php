@@ -65,8 +65,21 @@ function normalizeSalaryFilterThreshold($value)
         return null;
     }
 
-    $value = str_replace(array(',', ' ', 'rs.', 'rs', 'lakhs', 'lpa'), '', $value);
-    if (!is_numeric($value)) {
+    $value = str_replace(array(',', ' ', 'rs.', 'rs'), '', $value);
+
+    if (preg_match('/^(\d+(?:\.\d+)?)(l|lac|lacs|lakh|lakhs|lpa)$/', $value, $matches)) {
+        return (float) $matches[1] * 100000;
+    }
+
+    if (preg_match('/^(\d+(?:\.\d+)?)(k)$/', $value, $matches)) {
+        return (float) $matches[1] * 1000;
+    }
+
+    if (preg_match('/^(\d+(?:\.\d+)?)(cr|crore|crores)$/', $value, $matches)) {
+        return (float) $matches[1] * 10000000;
+    }
+
+    if (!preg_match('/^\d+(?:\.\d+)?$/', $value)) {
         return null;
     }
 
