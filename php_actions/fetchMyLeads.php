@@ -94,6 +94,39 @@ function normalizeSalaryFilterThreshold($value)
     return $amount;
 }
 
+function buildNormalizedExperienceSql($columnName)
+{
+    $columnName = trim((string) $columnName);
+    $cleanValue = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LOWER(TRIM(COALESCE(" . $columnName . ", ''))), 'years', ''), 'year', ''), 'yrs', ''), 'yr', ''), ' ', '')";
+
+    return "(CASE
+        WHEN TRIM(LOWER(COALESCE(" . $columnName . ", ''))) IN ('', 'na', 'n/a', 'none', 'null', '-') THEN NULL
+        WHEN " . $cleanValue . " REGEXP '^[0-9]+(\\\\.[0-9]+)?$' THEN
+            CASE
+                WHEN " . $cleanValue . " LIKE '%.%' THEN CAST(" . $cleanValue . " AS DECIMAL(12,2))
+                WHEN CAST(" . $cleanValue . " AS UNSIGNED) >= 10 THEN CAST(" . $cleanValue . " AS DECIMAL(12,2)) / 12
+                WHEN CAST(" . $cleanValue . " AS UNSIGNED) >= 8 THEN CAST(" . $cleanValue . " AS DECIMAL(12,2)) / 12
+                ELSE CAST(" . $cleanValue . " AS DECIMAL(12,2))
+            END
+        ELSE NULL
+    END)";
+}
+
+function normalizeExperienceFilterThreshold($value)
+{
+    $value = strtolower(trim((string) $value));
+    if ($value === '') {
+        return null;
+    }
+
+    $value = str_replace(array('years', 'year', 'yrs', 'yr', ' '), '', $value);
+    if (!preg_match('/^\d+(?:\.\d+)?$/', $value)) {
+        return null;
+    }
+
+    return (float) $value;
+}
+
 function buildLeadWhereClause($connect)
 {
     $conditions = array();
@@ -116,8 +149,10 @@ function buildLeadWhereClause($connect)
         }
 
         if (!empty($_POST["experiance"])) {
-            $experience = $connect->real_escape_string($_POST["experiance"]);
-            $conditions[] = "tblleads.experiance LIKE '%" . $experience . "%'";
+            $experience = normalizeExperienceFilterThreshold($_POST["experiance"]);
+            if ($experience !== null) {
+                $conditions[] = buildNormalizedExperienceSql('tblleads.experiance') . " >= " . (float) $experience;
+            }
         }
     }
 
