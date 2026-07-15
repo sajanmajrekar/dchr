@@ -68,6 +68,20 @@ div.dataTables_info{
     margin-right: 0;
     margin-left:0;
 }
+.datefilters .filter-row{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px 0;
+    margin-bottom: 14px;
+}
+.datefilters .filter-row:last-child{
+    margin-bottom: 0;
+}
+.datefilters .filter-actions{
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+}
 .btn-search{
     margin-top: 23px;
 }
@@ -199,7 +213,8 @@ div.dataTables_info{
         <div class="table-responsive">
             <div class="row datefilters">
              <div class="form-group">
-                    <div class="col-md-2">
+                    <div class="filter-row">
+                    <div class="col-md-2 col-sm-6">
                          <label class="control-label" for="example-daterange1">Roles</label>
                           <select id="roles-filter" name="roles-filter" class="form-control" size="1">
                                                     <option value="">Please select</option>
@@ -220,7 +235,7 @@ div.dataTables_info{
                             <input type="text" name="end_date" id="end_date" class="form-control" autocomplete="off" placeholder="To">
                         </div> -->
                         </div>
-                         <div class="col-md-2">
+                         <div class="col-md-2 col-sm-6">
                          <label class="control-label" for="example-daterange1">Experience</label>
                           <input  id="experiancefilt" name="experiancefilt" class="form-control" type="text" />
                        <!--  <div class="input-group input-daterange" data-date-format="yyyy-mm-dd">
@@ -229,7 +244,7 @@ div.dataTables_info{
                             <input type="text" name="end_date" id="end_date" class="form-control" autocomplete="off" placeholder="To">
                         </div> -->
                         </div>
-                        <div class="form-group col-md-2">
+                        <div class="form-group col-md-2 col-sm-6">
                                             <div>
                                                 <label for="leadstatus">Status</label>
                                                 <select id="leadstatus" name="leadstatus" class="form-control" size="1">
@@ -248,7 +263,7 @@ div.dataTables_info{
                                             </div>
                                              
                         </div>
-                        <div class="form-group col-md-2">
+                        <div class="form-group col-md-2 col-sm-6">
                                             <div>
                                                 <label for="leadsource">Source</label>
                                                 <select id="leadsource" name="leadsource" class="form-control" size="1">
@@ -267,11 +282,11 @@ div.dataTables_info{
                                             </div>
                                              
                         </div>
-                    <div class="form-group col-md-2">
+                    <div class="form-group col-md-2 col-sm-6 filter-actions">
                         <input type="button" name="search" id="search" value="Search" class="btn btn-info btn-search" />
                         <input type="button" name="reset" id="reset" value="Reset" class="btn  btn-danger" />
                     </div>
-             <div class="col-md-2">
+             <div class="col-md-2 col-sm-6">
                  <div>
                     <label for="leadsource">Sort by:</label>
                     <select id="sortbyinterval" name="leadstatus" class="form-control" size="1">
@@ -280,6 +295,33 @@ div.dataTables_info{
                         <option value="last-thirty">Last 30 days</option>
                         <option value="last-month">Last 3 month</option>
                     </select>
+                </div>
+             </div>
+             </div>
+             <div class="filter-row">
+                <div class="col-md-2 col-sm-6">
+                    <label for="cityfilter">City</label>
+                    <input type="text" id="cityfilter" name="cityfilter" class="form-control" placeholder="Please enter city">
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label for="relocatefilter">Willing to Relocate</label>
+                    <select id="relocatefilter" name="relocatefilter" class="form-control" size="1">
+                        <option value="">Please select</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label for="currentctcfilter">Current CTC</label>
+                    <input type="text" id="currentctcfilter" name="currentctcfilter" class="form-control" placeholder="Please enter CTC">
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label for="expectedctcfilter">Expected CTC</label>
+                    <input type="text" id="expectedctcfilter" name="expectedctcfilter" class="form-control" placeholder="Please enter CTC">
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label for="noticefilter">Notice Period</label>
+                    <input type="text" id="noticefilter" name="noticefilter" class="form-control" placeholder="Please enter notice period">
                 </div>
              </div>
              </div>

@@ -51,6 +51,20 @@ div.dataTables_info{
     margin-right: 0;
     margin-left:0;
 }
+.datefilters .filter-row{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px 0;
+    margin-bottom: 14px;
+}
+.datefilters .filter-row:last-child{
+    margin-bottom: 0;
+}
+.datefilters .filter-actions{
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+}
 .btn-search{
     margin-top: 23px;
 }
@@ -201,7 +215,8 @@ div.dataTables_info{
         <div class="">
             <div class="row datefilters">
              <div class="form-group">
-                    <div class="col-md-3">
+                    <div class="filter-row">
+                    <div class="col-md-3 col-sm-6">
                          <label class="control-label" for="example-daterange1">Date Range</label>
                         <div class="input-group input-daterange" data-date-format="yyyy-mm-dd">
                             <input type="text" name="start_date" id="start_date" class="form-control" autocomplete="off" placeholder="From">
@@ -210,7 +225,7 @@ div.dataTables_info{
                         </div>
                         </div>
                         
-                        <div class="form-group col-md-3">
+                        <div class="form-group col-md-2 col-sm-6">
                                             <div>
                                                 <label for="leadsource">Roles</label>
                                                 <select id="leadsource" name="leadsource" class="form-control" size="1">
@@ -229,23 +244,85 @@ div.dataTables_info{
                                             </div>
                                              
                         </div>
-                        <div class="form-group col-md-2">
+                        <div class="form-group col-md-2 col-sm-6">
                                             <div>
                                                 <label for="leadexperieance">Experience in month</label>
                                                <input type="text" id="leadexperieance" class="form-control" name="leadexperieance">
                                             </div>
                                              
                         </div>
-                        <div class="form-group col-md-2">
+                        <div class="form-group col-md-2 col-sm-6">
                                             <div>
                                                 <label for="noticeperiod">Notice Period in Days</label>
                                                <input type="text" id="noticeperiod" class="form-control" name="noticeperiod">
                                             </div>
                                              
                         </div>
-                    <div class="form-group col-md-1">
-                        <input type="button" name="search" id="search" value="Show Datasource" class="btn btn-info btn-search" />
+                    <div class="form-group col-md-2 col-sm-6">
+                        <label for="bulkstatus">Status</label>
+                        <select id="bulkstatus" name="bulkstatus" class="form-control" size="1">
+                            <option value="">Please select</option>
+                        <?php
+                            $sql = "SELECT * FROM `tblleadsstatus` order by name asc";
+                            $result = $connect->query($sql);
+                            if($result->num_rows > 0) { 
+                             while($row = $result->fetch_array()) {
+                        ?>
+                            <option value=<?php echo $row[0]; ?>><?php echo $row[1]; ?></option>
+                        <?php }
+                    }?>
+                        </select>
                     </div>
+                    <div class="form-group col-md-1 col-sm-6 filter-actions">
+                        <input type="button" name="search" id="search" value="Show Datasource" class="btn btn-info btn-search" />
+                        <input type="button" name="reset" id="reset" value="Reset" class="btn btn-danger" />
+                    </div>
+                    </div>
+                    <div class="filter-row">
+                        <div class="col-md-2 col-sm-6">
+                            <label for="bulksource">Source</label>
+                            <select id="bulksource" name="bulksource" class="form-control" size="1">
+                                <option value="">Please select</option>
+                            <?php
+                                $sql = "SELECT * FROM `tblleadssources` order by name asc";
+                                $result = $connect->query($sql);
+                                if($result->num_rows > 0) { 
+                                 while($row = $result->fetch_array()) {
+                            ?>
+                                <option value=<?php echo $row[0]; ?>><?php echo $row[1]; ?></option>
+                            <?php }
+                        }?>
+                            </select>
+                        </div>
+                        <div class="col-md-2 col-sm-6">
+                            <label for="bulkcity">City</label>
+                            <input type="text" id="bulkcity" name="bulkcity" class="form-control" placeholder="Please enter city">
+                        </div>
+                        <div class="col-md-2 col-sm-6">
+                            <label for="bulkrelocate">Willing to Relocate</label>
+                            <select id="bulkrelocate" name="bulkrelocate" class="form-control" size="1">
+                                <option value="">Please select</option>
+                                <option value="Yes">Yes</option>
+                                <option value="No">No</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 col-sm-6">
+                            <label for="bulkcurrentctc">Current CTC</label>
+                            <input type="text" id="bulkcurrentctc" name="bulkcurrentctc" class="form-control" placeholder="Please enter CTC">
+                        </div>
+                        <div class="col-md-2 col-sm-6">
+                            <label for="bulkexpectedctc">Expected CTC</label>
+                            <input type="text" id="bulkexpectedctc" name="bulkexpectedctc" class="form-control" placeholder="Please enter CTC">
+                        </div>
+                        <div class="col-md-2 col-sm-6">
+                            <label for="sortbyinterval">Sort by</label>
+                            <select id="sortbyinterval" name="sortbyinterval" class="form-control" size="1">
+                                <option value="">Please select</option>
+                                <option value="last-seven">Last 7 days</option>
+                                <option value="last-thirty">Last 30 days</option>
+                                <option value="last-month">Last 3 month</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="form-section">
                     <form action="" id="mailform" method="post" class="form-control-borderless">

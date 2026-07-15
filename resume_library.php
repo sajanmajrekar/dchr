@@ -51,7 +51,11 @@ function resumeLibraryUrl($overrides = array())
 
 function resumeLibraryHasActiveFilters($filters)
 {
-    return trim((string) $filters['q']) !== '' || (int) $filters['role'] > 0;
+    return trim((string) $filters['q']) !== ''
+        || (int) $filters['role'] > 0
+        || trim((string) $filters['experience']) !== ''
+        || (int) $filters['lead_status'] > 0
+        || (int) $filters['source'] > 0;
 }
 
 $requestMethod = isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : 'GET';
@@ -61,7 +65,10 @@ if ($requestMethod === 'POST' && $action !== '') {
     if ($action === 'ai_insights') {
         $filters = array(
             'q' => isset($_POST['q']) ? trim((string) $_POST['q']) : '',
-            'role' => isset($_POST['role']) ? (int) $_POST['role'] : 0
+            'role' => isset($_POST['role']) ? (int) $_POST['role'] : 0,
+            'experience' => isset($_POST['experience']) ? trim((string) $_POST['experience']) : '',
+            'lead_status' => isset($_POST['lead_status']) ? (int) $_POST['lead_status'] : 0,
+            'source' => isset($_POST['source']) ? (int) $_POST['source'] : 0
         );
 
         if (!resumeLibraryHasActiveFilters($filters)) {
@@ -73,6 +80,9 @@ if ($requestMethod === 'POST' && $action !== '') {
 
         $hiringBrief = 'Keyword search: ' . ($filters['q'] !== '' ? $filters['q'] : 'none');
         $hiringBrief .= "\nRole filter ID: " . (int) $filters['role'];
+        $hiringBrief .= "\nExperience filter: " . ($filters['experience'] !== '' ? $filters['experience'] : 'none');
+        $hiringBrief .= "\nLead status ID: " . (int) $filters['lead_status'];
+        $hiringBrief .= "\nSource filter ID: " . (int) $filters['source'];
         $hiringBrief .= "\nTask: Review the top search results and explain fit for this search.";
 
         $uiResultLimit = 10;
@@ -80,6 +90,9 @@ if ($requestMethod === 'POST' && $action !== '') {
         $candidateResult = fetchResumeSearchResults($connect, array(
             'q' => $filters['q'],
             'role' => $filters['role'],
+            'experience' => $filters['experience'],
+            'lead_status' => $filters['lead_status'],
+            'source' => $filters['source'],
             'status' => 'completed'
         ), 1, $uiResultLimit);
 
@@ -145,7 +158,10 @@ if ($requestMethod === 'POST' && $action !== '') {
 
 $filters = array(
     'q' => isset($_GET['q']) ? trim((string) $_GET['q']) : '',
-    'role' => isset($_GET['role']) ? (int) $_GET['role'] : 0
+    'role' => isset($_GET['role']) ? (int) $_GET['role'] : 0,
+    'experience' => isset($_GET['experience']) ? trim((string) $_GET['experience']) : '',
+    'lead_status' => isset($_GET['lead_status']) ? (int) $_GET['lead_status'] : 0,
+    'source' => isset($_GET['source']) ? (int) $_GET['source'] : 0
 );
 
 $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
@@ -154,6 +170,8 @@ $perPage = 10;
 $stats = fetchResumeDocumentStats($connect);
 $queueStats = fetchResumeQueueStats($connect);
 $roleOptions = fetchResumeRoleOptions($connect);
+$leadStatusOptions = fetchResumeLeadStatusOptions($connect);
+$sourceOptions = fetchResumeSourceOptions($connect);
 $hasActiveFilters = resumeLibraryHasActiveFilters($filters);
 $results = array(
     'rows' => array(),
@@ -167,6 +185,9 @@ if ($hasActiveFilters) {
     $results = fetchResumeSearchResults($connect, array(
         'q' => $filters['q'],
         'role' => $filters['role'],
+        'experience' => $filters['experience'],
+        'lead_status' => $filters['lead_status'],
+        'source' => $filters['source'],
         'status' => 'completed'
     ), $page, $perPage);
 }
@@ -433,16 +454,38 @@ if ($hasActiveFilters) {
     <div class="resume-panel">
         <form method="get" action="resume_library.php" class="form-horizontal">
             <div class="row">
-                <div class="col-md-8">
+                <div class="col-md-4">
                     <label for="q">Search keyword</label>
                     <input type="text" id="q" name="q" class="form-control input-lg" value="<?php echo resumeLibraryEsc($filters['q']); ?>" placeholder="SEO, paid media, content, Meta ads, GA4, copywriting">
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-2">
                     <label for="role">Role</label>
                     <select id="role" name="role" class="form-control input-lg">
                         <option value="0">All roles</option>
                         <?php foreach ($roleOptions as $roleOption) { ?>
                             <option value="<?php echo (int) $roleOption['id']; ?>"<?php echo (int) $filters['role'] === (int) $roleOption['id'] ? ' selected' : ''; ?>><?php echo resumeLibraryEsc($roleOption['name']); ?></option>
+                        <?php } ?>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="experience">Experience</label>
+                    <input type="text" id="experience" name="experience" class="form-control input-lg" value="<?php echo resumeLibraryEsc($filters['experience']); ?>" placeholder="2, 3+, 5 years">
+                </div>
+                <div class="col-md-2">
+                    <label for="lead_status">Status</label>
+                    <select id="lead_status" name="lead_status" class="form-control input-lg">
+                        <option value="0">Please select</option>
+                        <?php foreach ($leadStatusOptions as $leadStatusOption) { ?>
+                            <option value="<?php echo (int) $leadStatusOption['id']; ?>"<?php echo (int) $filters['lead_status'] === (int) $leadStatusOption['id'] ? ' selected' : ''; ?>><?php echo resumeLibraryEsc($leadStatusOption['name']); ?></option>
+                        <?php } ?>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="source">Source</label>
+                    <select id="source" name="source" class="form-control input-lg">
+                        <option value="0">Please select</option>
+                        <?php foreach ($sourceOptions as $sourceOption) { ?>
+                            <option value="<?php echo (int) $sourceOption['id']; ?>"<?php echo (int) $filters['source'] === (int) $sourceOption['id'] ? ' selected' : ''; ?>><?php echo resumeLibraryEsc($sourceOption['name']); ?></option>
                         <?php } ?>
                     </select>
                 </div>
@@ -488,9 +531,9 @@ if ($hasActiveFilters) {
             </div>
         </div>
         <?php if (!$hasActiveFilters) { ?>
-            <div class="alert alert-info" style="margin-bottom:0;">Use a keyword or role filter first. Results will appear only after you search.</div>
+            <div class="alert alert-info" style="margin-bottom:0;">Use any filter from the search form first. Results will appear only after you search.</div>
         <?php } elseif (empty($results['rows'])) { ?>
-            <div class="alert alert-info" style="margin-bottom:0;">No completed resumes matched your current keyword and role search.</div>
+            <div class="alert alert-info" style="margin-bottom:0;">No completed resumes matched your current filter selection.</div>
         <?php } ?>
 
         <div id="candidateGrid" class="candidate-grid">
@@ -616,8 +659,8 @@ $(function () {
     var aiProgressTimer = null;
 
     $('#runAiInsightsBtn').on('click', function () {
-        if (!$('#q').val().trim() && (!$('#role').val() || $('#role').val() === '0')) {
-            $('#aiInsightMessage').text('Enter a keyword or choose a role first.');
+        if (!$('#q').val().trim() && (!$('#role').val() || $('#role').val() === '0') && !$('#experience').val().trim() && (!$('#lead_status').val() || $('#lead_status').val() === '0') && (!$('#source').val() || $('#source').val() === '0')) {
+            $('#aiInsightMessage').text('Use at least one filter before running AI Search.');
             return;
         }
 
@@ -642,7 +685,10 @@ $(function () {
         $.post('resume_library.php', {
             action: 'ai_insights',
             q: $('#q').val(),
-            role: $('#role').val()
+            role: $('#role').val(),
+            experience: $('#experience').val(),
+            lead_status: $('#lead_status').val(),
+            source: $('#source').val()
         }, function (response) {
             stopAiProgressAnimation();
             if (Array.isArray(response.candidate_rows) && response.candidate_rows.length) {

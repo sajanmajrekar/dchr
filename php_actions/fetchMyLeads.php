@@ -68,6 +68,42 @@ function buildLeadWhereClause($connect)
         }
     }
 
+    if (!empty($_POST["city"])) {
+        $city = $connect->real_escape_string(trim((string) $_POST["city"]));
+        $conditions[] = "tblleads.city LIKE '%" . $city . "%'";
+    }
+
+    if (!empty($_POST["relocate"])) {
+        $relocate = $connect->real_escape_string(trim((string) $_POST["relocate"]));
+        $conditions[] = "tblleads.willing_to_relocate = '" . $relocate . "'";
+    }
+
+    if (!empty($_POST["currentctc"])) {
+        $currentCtc = $connect->real_escape_string(trim((string) $_POST["currentctc"]));
+        $conditions[] = "tblleads.csalary LIKE '%" . $currentCtc . "%'";
+    }
+
+    if (!empty($_POST["expectedctc"])) {
+        $expectedCtc = $connect->real_escape_string(trim((string) $_POST["expectedctc"]));
+        $conditions[] = "tblleads.esalary LIKE '%" . $expectedCtc . "%'";
+    }
+
+    if (!empty($_POST["noticeperiod"])) {
+        $noticePeriod = $connect->real_escape_string(trim((string) $_POST["noticeperiod"]));
+        $conditions[] = "tblleads.nperiod LIKE '%" . $noticePeriod . "%'";
+    }
+
+    if (!empty($_POST["interval"])) {
+        $interval = trim((string) $_POST["interval"]);
+        if ($interval === 'last-seven') {
+            $conditions[] = "DATE(tblleads.dateadded) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+        } elseif ($interval === 'last-thirty') {
+            $conditions[] = "DATE(tblleads.dateadded) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+        } elseif ($interval === 'last-month') {
+            $conditions[] = "DATE(tblleads.dateadded) >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)";
+        }
+    }
+
     if (isset($_POST['search']['value']) && trim($_POST['search']['value']) !== '') {
         $search = $connect->real_escape_string(trim($_POST['search']['value']));
         $conditions[] = "(tblleads.name LIKE '%" . $search . "%' OR tblleads.email LIKE '%" . $search . "%' OR tblleads.phonenumber LIKE '%" . $search . "%' OR tblleads.city LIKE '%" . $search . "%')";

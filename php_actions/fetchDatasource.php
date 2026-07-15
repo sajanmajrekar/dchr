@@ -46,6 +46,13 @@ try {
     $roles = isset($_POST["roles"]) ? trim($_POST["roles"]) : '';
     $nperiod = isset($_POST["nperiod"]) ? trim($_POST["nperiod"]) : '';
     $experiance = isset($_POST["experiance"]) ? trim($_POST["experiance"]) : '';
+    $leadStatus = isset($_POST["leadstatus"]) ? trim($_POST["leadstatus"]) : '';
+    $leadSource = isset($_POST["leadsource"]) ? trim($_POST["leadsource"]) : '';
+    $city = isset($_POST["city"]) ? trim($_POST["city"]) : '';
+    $relocate = isset($_POST["relocate"]) ? trim($_POST["relocate"]) : '';
+    $currentCtc = isset($_POST["currentctc"]) ? trim($_POST["currentctc"]) : '';
+    $expectedCtc = isset($_POST["expectedctc"]) ? trim($_POST["expectedctc"]) : '';
+    $interval = isset($_POST["interval"]) ? trim($_POST["interval"]) : '';
     $startDate = isset($_POST["start_date"]) ? trim($_POST["start_date"]) : '';
     $endDate = isset($_POST["end_date"]) ? trim($_POST["end_date"]) : '';
 
@@ -66,9 +73,43 @@ try {
     		$conditions[] = "tblleads.experiance >= '" . $connect->real_escape_string($experiance) . "'";
     	}
 
+        if ($leadStatus !== '' && datasourceLeadColumnExists($connect, 'status')) {
+            $conditions[] = "tblleads.status = '" . $connect->real_escape_string($leadStatus) . "'";
+        }
+
+        if ($leadSource !== '' && datasourceLeadColumnExists($connect, 'source')) {
+            $conditions[] = "tblleads.source = '" . $connect->real_escape_string($leadSource) . "'";
+        }
+
+        if ($city !== '' && datasourceLeadColumnExists($connect, 'city')) {
+            $conditions[] = "tblleads.city LIKE '%" . $connect->real_escape_string($city) . "%'";
+        }
+
+        if ($relocate !== '' && datasourceLeadColumnExists($connect, 'willing_to_relocate')) {
+            $conditions[] = "tblleads.willing_to_relocate = '" . $connect->real_escape_string($relocate) . "'";
+        }
+
+        if ($currentCtc !== '' && datasourceLeadColumnExists($connect, 'csalary')) {
+            $conditions[] = "tblleads.csalary LIKE '%" . $connect->real_escape_string($currentCtc) . "%'";
+        }
+
+        if ($expectedCtc !== '' && datasourceLeadColumnExists($connect, 'esalary')) {
+            $conditions[] = "tblleads.esalary LIKE '%" . $connect->real_escape_string($expectedCtc) . "%'";
+        }
+
     	if ($startDate !== '' && $endDate !== '') {
     		$conditions[] = "DATE(tblleads.dateadded) BETWEEN '" . $connect->real_escape_string($startDate) . "' AND '" . $connect->real_escape_string($endDate) . "'";
     	}
+
+        if ($interval !== '') {
+            if ($interval === 'last-seven') {
+                $conditions[] = "DATE(tblleads.dateadded) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+            } elseif ($interval === 'last-thirty') {
+                $conditions[] = "DATE(tblleads.dateadded) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+            } elseif ($interval === 'last-month') {
+                $conditions[] = "DATE(tblleads.dateadded) >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)";
+            }
+        }
 
     	if (!empty($conditions)) {
     		$sql .= " WHERE " . implode(" AND ", $conditions);

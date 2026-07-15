@@ -32,6 +32,13 @@ $(document).ready(function() {
             $('#leadsource').val('');
             $('#leadexperieance').val('');
             $('#noticeperiod').val('');
+            $('#bulkstatus').val('');
+            $('#bulksource').val('');
+            $('#bulkcity').val('');
+            $('#bulkrelocate').val('');
+            $('#bulkcurrentctc').val('');
+            $('#bulkexpectedctc').val('');
+            $('#sortbyinterval').val('');
             $('.occurance').html('No Data Selected');
             $('#datasource').val('');
             $('#leaddatatable tbody').empty();
@@ -43,7 +50,7 @@ $('#downloadsample').click(function(e) {
     e.preventDefault();  //stop the browser from following
     window.location.href = 'upload/sample_import_file.csv';
 });
- function fetch_data(is_date_search,start_date, end_date, roles, experiance, nperiod)
+ function fetch_data(is_date_search,start_date, end_date, roles, experiance, nperiod, leadstatus, leadsource, city, relocate, currentctc, expectedctc, interval)
              {
 
                        manageUserTable= $('#leaddatatable').DataTable({
@@ -56,7 +63,7 @@ $('#downloadsample').click(function(e) {
                                 url:"php_actions/fetchDatasource.php",
                                 type:"POST",
                                 data:{
-                                 is_date_search:is_date_search, start_date:start_date, end_date:end_date, roles: roles, experiance:experiance, nperiod:nperiod 
+                                 is_date_search:is_date_search, start_date:start_date, end_date:end_date, roles: roles, experiance:experiance, nperiod:nperiod, leadstatus: leadstatus, leadsource: leadsource, city: city, relocate: relocate, currentctc: currentctc, expectedctc: expectedctc, interval: interval
                                 }
                                }
                         });
@@ -93,6 +100,13 @@ $('#downloadsample').click(function(e) {
       var role = $('#leadsource').val();
       var experiance = $('#leadexperieance').val();
       var nperiod = $('#noticeperiod').val();
+      var leadstatus = $('#bulkstatus').val();
+      var leadsource = $('#bulksource').val();
+      var city = $('#bulkcity').val();
+      var relocate = $('#bulkrelocate').val();
+      var currentctc = $('#bulkcurrentctc').val();
+      var expectedctc = $('#bulkexpectedctc').val();
+      var interval = $('#sortbyinterval').val();
       var start_date = $('#start_date').val();
       var end_date = $('#end_date').val();
       //alert(start_date +"   "+end_date+"   "+role+"   "+experiance+"   "+nperiod+"   ");
@@ -106,12 +120,12 @@ $('#downloadsample').click(function(e) {
             offset: {from: 'top', amount: 20}
         });
       }
-      else if((start_date != '' && end_date !='') || (role != '' || experiance!='' || nperiod!=''))
+      else if((start_date != '' && end_date !='') || (role != '' || experiance!='' || nperiod!='' || leadstatus != '' || leadsource != '' || city != '' || relocate != '' || currentctc != '' || expectedctc != '' || interval != ''))
       {
        if ($.fn.DataTable.isDataTable('#leaddatatable')) {
            $('#leaddatatable').DataTable().clear().destroy();
        }
-       fetch_data('yes',start_date, end_date, role, experiance, nperiod);
+       fetch_data('yes',start_date, end_date, role, experiance, nperiod, leadstatus, leadsource, city, relocate, currentctc, expectedctc, interval);
       }
       else
       {
@@ -134,23 +148,22 @@ $('#downloadsample').click(function(e) {
 		$("#userstable").removeClass('hide');
 	});
     $("#sortbyinterval").change(function(){ 
-    var interval = $(this).val();
-         $('#leaddatatable').DataTable().destroy();
-         manageUserTable= $('#leaddatatable').DataTable({
-                            'order': [],
-                            columnDefs: [ { orderable: false, targets: [ 4 ] } ],
-                            pageLength: 10,
-                            lengthMenu: [[5, 10, 20, 50], [5, 10, 20, 50]],
-                            dom: 'lBfrtip',
-                            "ajax" : {
-                                url:"php_actions/fetchByLastDays.php",
-                                type:"POST",
-                                data:{
-                                 interval:interval
-                                }
-                               }
-                        });
-          $(".dt-button").addClass("btn btn-primary");
+        var role = $('#leadsource').val();
+        var experiance = $('#leadexperieance').val();
+        var nperiod = $('#noticeperiod').val();
+        var leadstatus = $('#bulkstatus').val();
+        var leadsource = $('#bulksource').val();
+        var city = $('#bulkcity').val();
+        var relocate = $('#bulkrelocate').val();
+        var currentctc = $('#bulkcurrentctc').val();
+        var expectedctc = $('#bulkexpectedctc').val();
+        var interval = $(this).val();
+        var start_date = $('#start_date').val();
+        var end_date = $('#end_date').val();
+        if ($.fn.DataTable.isDataTable('#leaddatatable')) {
+            $('#leaddatatable').DataTable().clear().destroy();
+        }
+        fetch_data('yes',start_date, end_date, role, experiance, nperiod, leadstatus, leadsource, city, relocate, currentctc, expectedctc, interval);
     });
     $("#example-chosen").change(function() {
         var sociallead='<div class="gmail_default" style="-webkit-text-stroke-width:0px; text-align:start"><div dir="ltr"><div><div><div><span style="font-size:small"><span style="color:#222222"><span style="font-family:verdana,sans-serif"><span style="background-color:#ffffff"><span style="color:#212121"><span style="font-family:verdana,sans-serif">Hello ,</span></span></span></span></span></span></div>&nbsp;<div><span style="font-size:small"><span style="color:#222222"><span style="font-family:verdana,sans-serif"><span style="background-color:#ffffff"><span style="color:#212121"><span style="font-family:verdana,sans-serif">We are looking for a candidate to fill in the vacancy of a Social Media TL at DigiChefs. Feel free to get back in case of any queries.</span></span></span></span></span></span></div><div><br/><span style="font-size:small"><span style="color:#222222"><span style="font-family:verdana,sans-serif"><span style="background-color:#ffffff"><span style="color:#212121"><span style="font-family:verdana,sans-serif">Know more about us here:&nbsp;<a href="http://www.digichefs.com/" style="color:#1155cc" target="_blank">www.digichefs.com</a>.</span></span></span></span></span></span></div><div>&nbsp;</div></div></div></div></div><div style="-webkit-text-stroke-width:0px; text-align:start"><div dir="ltr"><div dir="ltr"><div dir="ltr"><div dir="ltr"><div dir="ltr"><div dir="ltr"><div><div><span style="font-size:small"><span style="color:#222222"><span style="font-family:verdana,sans-serif"><span style="background-color:#ffffff"><span style="font-family:verdana,sans-serif"><span style="color:#212121"><strong>Social Media Team Lead</strong></span></span></span></span></span></span></div><div><ul><li dir="ltr" style="list-style-type:disc"><p dir="ltr"><span style="font-size:small"><span style="color:#222222"><span style="font-family:verdana,sans-serif"><span style="background-color:#ffffff"><span style="font-family:verdana,sans-serif">Managing a team of social media experts while guiding them through all social media responsibilities for the brands assigned to them</span></span></span></span></span></p></li><li dir="ltr" style="list-style-type:disc"><p dir="ltr"><span style="font-size:small"><span style="color:#222222"><span style="font-family:verdana,sans-serif"><span style="background-color:#ffffff"><span style="font-family:verdana,sans-serif">Resolving queries raised by team mates or clients effectively</span></span></span></span></span></p></li><li dir="ltr" style="list-style-type:disc"><p dir="ltr"><span style="font-size:small"><span style="color:#222222"><span style="font-family:verdana,sans-serif"><span style="background-color:#ffffff"><span style="font-family:verdana,sans-serif">Measuring performance of all the projects handled by the team and yourself and suggesting ways to enhance the share of voice for brands</span></span></span></span></span></p></li><li dir="ltr" style="list-style-type:disc"><p dir="ltr"><span style="font-size:small"><span style="color:#222222"><span style="font-family:verdana,sans-serif"><span style="background-color:#ffffff"><span style="font-family:verdana,sans-serif">Thinking of monthly campaign ideas in participation with the copy &amp; graphic design teams, that you feel works best</span></span></span></span></span></p></li><li dir="ltr" style="list-style-type:disc"><p dir="ltr"><span style="font-size:small"><span style="color:#222222"><span style="font-family:verdana,sans-serif"><span style="background-color:#ffffff"><span style="font-family:verdana,sans-serif">Role involves heavy client coordination &amp; interaction</span></span></span></span></span></p></li><li dir="ltr" style="list-style-type:disc"><p dir="ltr"><span style="font-size:small"><span style="color:#222222"><span style="font-family:verdana,sans-serif"><span style="background-color:#ffffff"><span style="font-family:verdana,sans-serif">Preparing long term platform wise social media strategy for brands</span></span></span></span></span></p></li><li dir="ltr" style="list-style-type:disc"><p dir="ltr"><span style="font-size:small"><span style="color:#222222"><span style="font-family:verdana,sans-serif"><span style="background-color:#ffffff"><span style="font-family:verdana,sans-serif">Generating ideas for moment marketing</span></span></span></span></span></p></li><li dir="ltr" style="list-style-type:disc"><p dir="ltr"><span style="font-size:small"><span style="color:#222222"><span style="font-family:verdana,sans-serif"><span style="background-color:#ffffff"><span style="font-family:verdana,sans-serif">Providing training to team mates as and when necessary</span></span></span></span></span></p></li></ul><p dir="ltr"><span style="font-size:small"><span style="color:#222222"><span style="font-family:verdana,sans-serif"><span style="background-color:#ffffff"><span style="font-family:verdana,sans-serif"><span style="color:#212121"><strong>Requirement&nbsp;&nbsp;&nbsp;</strong></span></span></span></span></span></span></p><ul><li dir="ltr" style="list-style-type:disc"><p dir="ltr"><span style="font-size:small"><span style="color:#222222"><span style="font-family:verdana,sans-serif"><span style="background-color:#ffffff"><span style="font-family:verdana,sans-serif">Good communication skills, written and spoken</span></span></span></span></span></p></li><li dir="ltr" style="list-style-type:disc"><p dir="ltr"><span style="font-size:small"><span style="color:#222222"><span style="font-family:verdana,sans-serif"><span style="background-color:#ffffff"><span style="font-family:verdana,sans-serif">Ability to interact, communicate and present ideas</span></span></span></span></span></p></li><li dir="ltr" style="list-style-type:disc"><p dir="ltr"><span style="font-size:small"><span style="color:#222222"><span style="font-family:verdana,sans-serif"><span style="background-color:#ffffff"><span style="font-family:verdana,sans-serif">Professionalism regarding time and deadlines</span></span></span></span></span></p></li></ul></div></div><div><span style="font-size:small"><span style="color:#222222"><span style="font-family:verdana,sans-serif"><span style="background-color:#ffffff"><span style="font-family:verdana,sans-serif"><strong>Please share your resume with us.</strong></span></span></span></span></span></div></div></div></div></div></div></div></div>';
