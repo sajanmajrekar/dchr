@@ -246,7 +246,7 @@ div.dataTables_info{
                         </div>
                         <div class="form-group col-md-2 col-sm-6">
                                             <div>
-                                                <label for="leadexperieance">Experience in month</label>
+                                                <label for="leadexperieance">Experience in Year</label>
                                                <input type="text" id="leadexperieance" class="form-control" name="leadexperieance">
                                             </div>
                                              

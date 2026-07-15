@@ -346,6 +346,13 @@ $('#mailform').validate({
                                     var role = $('#leadsource').val();
                                     var experiance = $('#leadexperieance').val();
                                     var nperiod = $('#noticeperiod').val();
+                                    var leadstatus = $('#bulkstatus').val();
+                                    var leadsource = $('#bulksource').val();
+                                    var city = $('#bulkcity').val();
+                                    var relocate = $('#bulkrelocate').val();
+                                    var currentctc = $('#bulkcurrentctc').val();
+                                    var expectedctc = $('#bulkexpectedctc').val();
+                                    var interval = $('#sortbyinterval').val();
                                     var start_date = $('#start_date').val();
                                     var end_date = $('#end_date').val();
                                     var is_date_search="yes";
@@ -354,7 +361,7 @@ $('#mailform').validate({
                                      
                                     $.ajax({
                                         type: 'POST',
-                                        data: { subject:subject, mailcontents:mailcontents, is_date_search:is_date_search, start_date:start_date, end_date:end_date, roles: role, experiance:experiance, nperiod:nperiod},
+                                        data: { subject:subject, mailcontents:mailcontents, is_date_search:is_date_search, start_date:start_date, end_date:end_date, roles: role, experiance:experiance, nperiod:nperiod, leadstatus: leadstatus, leadsource: leadsource, city: city, relocate: relocate, currentctc: currentctc, expectedctc: expectedctc, interval: interval},
                                         url : 'php_actions/sendbulkmail.php',
                                         success:function(response) {
                                                 console.log(response);
