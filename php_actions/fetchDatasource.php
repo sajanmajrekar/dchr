@@ -128,6 +128,39 @@ try {
         return (float) $value;
     }
 
+    function normalizeDatasourceExperienceValueToYears($value)
+    {
+        $value = strtolower(trim((string) $value));
+        if ($value === '' || in_array($value, array('na', 'n/a', 'none', 'null', '-'))) {
+            return null;
+        }
+
+        $value = str_replace(array('years', 'year', 'yrs', 'yr', ' '), '', $value);
+        if (!preg_match('/^\d+(?:\.\d+)?$/', $value)) {
+            return null;
+        }
+
+        $amount = (float) $value;
+        if (strpos($value, '.') !== false) {
+            return $amount;
+        }
+        if ($amount >= 10 || $amount >= 8) {
+            return $amount / 12;
+        }
+
+        return $amount;
+    }
+
+    function formatDatasourceExperienceDisplay($value)
+    {
+        $years = normalizeDatasourceExperienceValueToYears($value);
+        if ($years === null) {
+            return trim((string) $value) !== '' ? trim((string) $value) : 'Not available';
+        }
+
+        return rtrim(rtrim(number_format($years, 1, '.', ''), '0'), '.');
+    }
+
     $isDateSearch = isset($_POST["is_date_search"]) && $_POST["is_date_search"] === "yes";
     $roles = isset($_POST["roles"]) ? trim($_POST["roles"]) : '';
     $nperiod = isset($_POST["nperiod"]) ? trim($_POST["nperiod"]) : '';
@@ -228,6 +261,7 @@ try {
         $leadEmail = isset($row['email']) ? $row['email'] : '';
         $leadPhone = isset($row['phonenumber']) ? $row['phonenumber'] : '';
         $leadRoles = isset($row['roles']) ? $row['roles'] : '';
+        $leadExperience = formatDatasourceExperienceDisplay(isset($row['experiance']) ? $row['experiance'] : '');
         $leadDateAdded = isset($row['dateadded']) ? $row['dateadded'] : '';
         $leadLastContact = isset($row['lastcontact']) ? $row['lastcontact'] : '';
 
@@ -237,6 +271,7 @@ try {
      		$leadEmail,
      		$leadPhone,
      		getroletext($leadRoles),
+            $leadExperience,
      		!empty($leadDateAdded) ? date("d M, Y",strtotime($leadDateAdded)) : '',
      		time_ago($leadLastContact)
      	);

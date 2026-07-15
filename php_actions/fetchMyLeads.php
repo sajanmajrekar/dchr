@@ -127,6 +127,40 @@ function normalizeExperienceFilterThreshold($value)
     return (float) $value;
 }
 
+function normalizeExperienceValueToYears($value)
+{
+    $value = strtolower(trim((string) $value));
+    if ($value === '' || in_array($value, array('na', 'n/a', 'none', 'null', '-'))) {
+        return null;
+    }
+
+    $value = str_replace(array('years', 'year', 'yrs', 'yr', ' '), '', $value);
+    if (!preg_match('/^\d+(?:\.\d+)?$/', $value)) {
+        return null;
+    }
+
+    $amount = (float) $value;
+    if (strpos($value, '.') !== false) {
+        return $amount;
+    }
+    if ($amount >= 10 || $amount >= 8) {
+        return $amount / 12;
+    }
+
+    return $amount;
+}
+
+function formatNormalizedExperienceDisplay($value)
+{
+    $years = normalizeExperienceValueToYears($value);
+    if ($years === null) {
+        return trim((string) $value) !== '' ? trim((string) $value) : 'Not available';
+    }
+
+    $formatted = rtrim(rtrim(number_format($years, 1, '.', ''), '0'), '.');
+    return $formatted;
+}
+
 function buildLeadWhereClause($connect)
 {
     $conditions = array();
@@ -298,7 +332,7 @@ try {
         $leadCity = isset($row['city']) ? $row['city'] : '';
         $leadWillingToRelocate = isset($row['willing_to_relocate']) ? $row['willing_to_relocate'] : '';
         $leadRoles = isset($row['roles']) ? $row['roles'] : '';
-        $leadExperience = isset($row['experiance']) ? $row['experiance'] : '';
+        $leadExperience = formatNormalizedExperienceDisplay(isset($row['experiance']) ? $row['experiance'] : '');
         $leadCurrentSalary = isset($row['csalary']) ? $row['csalary'] : '';
         $leadExpectedSalary = isset($row['esalary']) ? $row['esalary'] : '';
         $leadNoticePeriod = isset($row['nperiod']) ? $row['nperiod'] : '';

@@ -424,6 +424,7 @@ div.dataTables_info{
                         <th>Email</th>
                         <th>Phone number</th>
                         <th>Roles</th>
+                        <th>Experience</th>
                         <th>Date Applied</th>
                         <th>last contacted</th>
                     </tr>
