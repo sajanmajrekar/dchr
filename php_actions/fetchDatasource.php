@@ -42,6 +42,46 @@ try {
         return isset($leadColumns[$columnName]);
     }
 
+    function datasourceAnnualSalarySql($columnName)
+    {
+        $columnName = trim((string) $columnName);
+        $cleanValue = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LOWER(TRIM(COALESCE(" . $columnName . ", ''))), ',', ''), ' ', ''), 'rs.', ''), 'rs', ''), 'lakhs', ''), 'lpa', '')";
+
+        return "(CASE
+            WHEN TRIM(LOWER(COALESCE(" . $columnName . ", ''))) IN ('', 'na', 'n/a', 'none', 'null', '-') THEN NULL
+            WHEN " . $cleanValue . " REGEXP '^[0-9]+(\\\\.[0-9]+)?$' THEN
+                CASE
+                    WHEN CAST(" . $cleanValue . " AS DECIMAL(12,2)) < 100 THEN CAST(" . $cleanValue . " AS DECIMAL(12,2)) * 100000
+                    WHEN CAST(" . $cleanValue . " AS DECIMAL(12,2)) < 100000 THEN CAST(" . $cleanValue . " AS DECIMAL(12,2)) * 12
+                    ELSE CAST(" . $cleanValue . " AS DECIMAL(12,2))
+                END
+            ELSE NULL
+        END)";
+    }
+
+    function normalizeDatasourceSalaryThreshold($value)
+    {
+        $value = strtolower(trim((string) $value));
+        if ($value === '') {
+            return null;
+        }
+
+        $value = str_replace(array(',', ' ', 'rs.', 'rs', 'lakhs', 'lpa'), '', $value);
+        if (!is_numeric($value)) {
+            return null;
+        }
+
+        $amount = (float) $value;
+        if ($amount < 100) {
+            return $amount * 100000;
+        }
+        if ($amount < 100000) {
+            return $amount * 12;
+        }
+
+        return $amount;
+    }
+
     $isDateSearch = isset($_POST["is_date_search"]) && $_POST["is_date_search"] === "yes";
     $roles = isset($_POST["roles"]) ? trim($_POST["roles"]) : '';
     $nperiod = isset($_POST["nperiod"]) ? trim($_POST["nperiod"]) : '';
@@ -90,11 +130,17 @@ try {
         }
 
         if ($currentCtc !== '' && datasourceLeadColumnExists($connect, 'csalary')) {
-            $conditions[] = "tblleads.csalary LIKE '%" . $connect->real_escape_string($currentCtc) . "%'";
+            $normalizedCurrentCtc = normalizeDatasourceSalaryThreshold($currentCtc);
+            if ($normalizedCurrentCtc !== null) {
+                $conditions[] = datasourceAnnualSalarySql('tblleads.csalary') . " <= " . (float) $normalizedCurrentCtc;
+            }
         }
 
         if ($expectedCtc !== '' && datasourceLeadColumnExists($connect, 'esalary')) {
-            $conditions[] = "tblleads.esalary LIKE '%" . $connect->real_escape_string($expectedCtc) . "%'";
+            $normalizedExpectedCtc = normalizeDatasourceSalaryThreshold($expectedCtc);
+            if ($normalizedExpectedCtc !== null) {
+                $conditions[] = datasourceAnnualSalarySql('tblleads.esalary') . " <= " . (float) $normalizedExpectedCtc;
+            }
         }
 
     	if ($startDate !== '' && $endDate !== '') {

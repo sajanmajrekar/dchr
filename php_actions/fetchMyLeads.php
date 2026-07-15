@@ -41,6 +41,46 @@ register_shutdown_function(function () {
     }
 });
 
+function buildAnnualSalarySql($columnName)
+{
+    $columnName = trim((string) $columnName);
+    $cleanValue = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LOWER(TRIM(COALESCE(" . $columnName . ", ''))), ',', ''), ' ', ''), 'rs.', ''), 'rs', ''), 'lakhs', ''), 'lpa', '')";
+
+    return "(CASE
+        WHEN TRIM(LOWER(COALESCE(" . $columnName . ", ''))) IN ('', 'na', 'n/a', 'none', 'null', '-') THEN NULL
+        WHEN " . $cleanValue . " REGEXP '^[0-9]+(\\\\.[0-9]+)?$' THEN
+            CASE
+                WHEN CAST(" . $cleanValue . " AS DECIMAL(12,2)) < 100 THEN CAST(" . $cleanValue . " AS DECIMAL(12,2)) * 100000
+                WHEN CAST(" . $cleanValue . " AS DECIMAL(12,2)) < 100000 THEN CAST(" . $cleanValue . " AS DECIMAL(12,2)) * 12
+                ELSE CAST(" . $cleanValue . " AS DECIMAL(12,2))
+            END
+        ELSE NULL
+    END)";
+}
+
+function normalizeSalaryFilterThreshold($value)
+{
+    $value = strtolower(trim((string) $value));
+    if ($value === '') {
+        return null;
+    }
+
+    $value = str_replace(array(',', ' ', 'rs.', 'rs', 'lakhs', 'lpa'), '', $value);
+    if (!is_numeric($value)) {
+        return null;
+    }
+
+    $amount = (float) $value;
+    if ($amount < 100) {
+        return $amount * 100000;
+    }
+    if ($amount < 100000) {
+        return $amount * 12;
+    }
+
+    return $amount;
+}
+
 function buildLeadWhereClause($connect)
 {
     $conditions = array();
@@ -79,13 +119,17 @@ function buildLeadWhereClause($connect)
     }
 
     if (!empty($_POST["currentctc"])) {
-        $currentCtc = $connect->real_escape_string(trim((string) $_POST["currentctc"]));
-        $conditions[] = "tblleads.csalary LIKE '%" . $currentCtc . "%'";
+        $currentCtc = normalizeSalaryFilterThreshold($_POST["currentctc"]);
+        if ($currentCtc !== null) {
+            $conditions[] = buildAnnualSalarySql('tblleads.csalary') . " <= " . (float) $currentCtc;
+        }
     }
 
     if (!empty($_POST["expectedctc"])) {
-        $expectedCtc = $connect->real_escape_string(trim((string) $_POST["expectedctc"]));
-        $conditions[] = "tblleads.esalary LIKE '%" . $expectedCtc . "%'";
+        $expectedCtc = normalizeSalaryFilterThreshold($_POST["expectedctc"]);
+        if ($expectedCtc !== null) {
+            $conditions[] = buildAnnualSalarySql('tblleads.esalary') . " <= " . (float) $expectedCtc;
+        }
     }
 
     if (!empty($_POST["noticeperiod"])) {
