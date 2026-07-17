@@ -11,6 +11,30 @@ require_once 'includes/resume_intelligence.php';
 
 ensureResumeIntelligenceTables($connect);
 
+if (!function_exists('fetchResumeLeadStatusOptions')) {
+    function fetchResumeLeadStatusOptions($connect)
+    {
+        $statuses = array();
+
+        if (!($connect instanceof mysqli)) {
+            return $statuses;
+        }
+
+        $result = $connect->query("SELECT id, name FROM tblleadsstatus ORDER BY name ASC");
+        if (!$result) {
+            return $statuses;
+        }
+
+        while ($row = $result->fetch_assoc()) {
+            $statuses[] = $row;
+        }
+
+        $result->free();
+
+        return $statuses;
+    }
+}
+
 function resumeLibraryJson($payload)
 {
     while (ob_get_level() > 0) {
