@@ -58,6 +58,31 @@ function resumeLibraryHasActiveFilters($filters)
         || (int) $filters['source'] > 0;
 }
 
+function resumeLibraryBuildAiHiringBrief($filters, $aiQuery = '')
+{
+    $aiQuery = trim((string) $aiQuery);
+    if ($aiQuery !== '') {
+        $brief = "Recruiter natural-language request:\n" . $aiQuery;
+        $brief .= "\n\nCurrent structured filters:";
+        $brief .= "\nKeyword search: " . ($filters['q'] !== '' ? $filters['q'] : 'none');
+        $brief .= "\nRole filter ID: " . (int) $filters['role'];
+        $brief .= "\nExperience filter: " . ($filters['experience'] !== '' ? $filters['experience'] : 'none');
+        $brief .= "\nLead status ID: " . (int) $filters['lead_status'];
+        $brief .= "\nSource filter ID: " . (int) $filters['source'];
+        $brief .= "\n\nTask: Interpret the recruiter request, find the strongest matching candidates from the provided resumes, and explain why they match. Use resume text, skills, experience, and notice period as evidence.";
+        return $brief;
+    }
+
+    $brief = 'Keyword search: ' . ($filters['q'] !== '' ? $filters['q'] : 'none');
+    $brief .= "\nRole filter ID: " . (int) $filters['role'];
+    $brief .= "\nExperience filter: " . ($filters['experience'] !== '' ? $filters['experience'] : 'none');
+    $brief .= "\nLead status ID: " . (int) $filters['lead_status'];
+    $brief .= "\nSource filter ID: " . (int) $filters['source'];
+    $brief .= "\nTask: Review the top search results and explain fit for this search.";
+
+    return $brief;
+}
+
 $requestMethod = isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : 'GET';
 $action = isset($_POST['action']) ? trim((string) $_POST['action']) : '';
 
@@ -70,23 +95,19 @@ if ($requestMethod === 'POST' && $action !== '') {
             'lead_status' => isset($_POST['lead_status']) ? (int) $_POST['lead_status'] : 0,
             'source' => isset($_POST['source']) ? (int) $_POST['source'] : 0
         );
+        $aiQuery = isset($_POST['ai_query']) ? trim((string) $_POST['ai_query']) : '';
 
-        if (!resumeLibraryHasActiveFilters($filters)) {
+        if ($aiQuery === '' && !resumeLibraryHasActiveFilters($filters)) {
             resumeLibraryJson(array(
                 'ok' => false,
-                'message' => 'Use keyword or role filter first, then run AI Search.'
+                'message' => 'Use a natural-language AI query or apply at least one filter before running AI Search.'
             ));
         }
 
-        $hiringBrief = 'Keyword search: ' . ($filters['q'] !== '' ? $filters['q'] : 'none');
-        $hiringBrief .= "\nRole filter ID: " . (int) $filters['role'];
-        $hiringBrief .= "\nExperience filter: " . ($filters['experience'] !== '' ? $filters['experience'] : 'none');
-        $hiringBrief .= "\nLead status ID: " . (int) $filters['lead_status'];
-        $hiringBrief .= "\nSource filter ID: " . (int) $filters['source'];
-        $hiringBrief .= "\nTask: Review the top search results and explain fit for this search.";
+        $hiringBrief = resumeLibraryBuildAiHiringBrief($filters, $aiQuery);
 
         $uiResultLimit = 10;
-        $aiBatchLimit = 4;
+        $aiBatchLimit = 10;
         $candidateResult = fetchResumeSearchResults($connect, array(
             'q' => $filters['q'],
             'role' => $filters['role'],
@@ -104,7 +125,11 @@ if ($requestMethod === 'POST' && $action !== '') {
         }
 
         $aiInputRows = array_slice($candidateResult['rows'], 0, $aiBatchLimit);
-        $aiResult = requestGeminiResumeInsights($hiringBrief, $aiInputRows, $filters);
+        $aiFilters = $filters;
+        if ($aiQuery !== '') {
+            $aiFilters['ai_query'] = $aiQuery;
+        }
+        $aiResult = requestGeminiResumeInsights($hiringBrief, $aiInputRows, $aiFilters);
         $candidateRowsForUi = array();
         foreach ($candidateResult['rows'] as $candidateRow) {
             $candidateRow['role_text'] = trim((string) getroletext((string) $candidateRow['roles']));
@@ -406,6 +431,29 @@ if ($hasActiveFilters) {
         white-space: pre-wrap;
         word-break: break-word;
     }
+    .ai-query-box {
+        margin-top: 16px;
+        padding: 16px;
+        border: 1px solid #d9e7f5;
+        border-radius: 10px;
+        background: linear-gradient(180deg, #f8fbff 0%, #f2f7fc 100%);
+    }
+    .ai-query-box label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #172033;
+    }
+    .ai-query-box textarea {
+        min-height: 88px;
+        resize: vertical;
+    }
+    .ai-query-help {
+        margin-top: 8px;
+        color: #637086;
+        font-size: 13px;
+        line-height: 1.6;
+    }
     @media (max-width: 991px) {
         .candidate-grid.ai-mode {
             grid-template-columns: 1fr;
@@ -490,9 +538,14 @@ if ($hasActiveFilters) {
                     </select>
                 </div>
             </div>
+            <div class="ai-query-box">
+                <label for="ai_query">AI recruiter query</label>
+                <textarea id="ai_query" class="form-control input-lg" placeholder="Example: I want an immediate joiner for SEO with 2 to 4 years experience, strong on-page and off-page skills, and preferably Mumbai based."></textarea>
+                <div class="ai-query-help">Type the requirement in plain English. AI will read the extracted resume text and rank the best matching candidates from the indexed PDF and DOC resumes.</div>
+            </div>
             <div style="margin-top:16px;">
                 <button type="submit" class="btn btn-primary btn-lg"><i class="fa fa-search"></i> Normal Search</button>
-                <button type="button" id="runAiInsightsBtn" class="btn btn-success btn-lg"><i class="fa fa-magic"></i> AI Search</button>
+                <button type="button" id="runAiInsightsBtn" class="btn btn-success btn-lg"><i class="fa fa-magic"></i> AI Copilot Search</button>
                 <a href="resume_library.php" class="btn btn-default btn-lg">Reset</a>
                 <span id="aiInsightMessage" style="margin-left:12px; color:#666;"></span>
             </div>
@@ -531,9 +584,9 @@ if ($hasActiveFilters) {
             </div>
         </div>
         <?php if (!$hasActiveFilters) { ?>
-            <div class="alert alert-info" style="margin-bottom:0;">Use any filter from the search form first. Results will appear only after you search.</div>
+            <div id="resumeEmptyState" class="alert alert-info" style="margin-bottom:0;">Use any filter from the search form or type an AI recruiter query above. Results will appear after you run a search.</div>
         <?php } elseif (empty($results['rows'])) { ?>
-            <div class="alert alert-info" style="margin-bottom:0;">No completed resumes matched your current filter selection.</div>
+            <div id="resumeEmptyState" class="alert alert-info" style="margin-bottom:0;">No completed resumes matched your current filter selection.</div>
         <?php } ?>
 
         <div id="candidateGrid" class="candidate-grid">
@@ -659,18 +712,20 @@ $(function () {
     var aiProgressTimer = null;
 
     $('#runAiInsightsBtn').on('click', function () {
-        if (!$('#q').val().trim() && (!$('#role').val() || $('#role').val() === '0') && !$('#experience').val().trim() && (!$('#lead_status').val() || $('#lead_status').val() === '0') && (!$('#source').val() || $('#source').val() === '0')) {
-            $('#aiInsightMessage').text('Use at least one filter before running AI Search.');
+        var aiQuery = $('#ai_query').val().trim();
+        if (!aiQuery && !$('#q').val().trim() && (!$('#role').val() || $('#role').val() === '0') && !$('#experience').val().trim() && (!$('#lead_status').val() || $('#lead_status').val() === '0') && (!$('#source').val() || $('#source').val() === '0')) {
+            $('#aiInsightMessage').text('Add an AI recruiter query or at least one filter before running AI Search.');
             return;
         }
 
-        $('#aiInsightMessage').text('AI is analyzing the top 10 current search results...');
+        $('#aiInsightMessage').text(aiQuery ? 'AI is reading resumes for your recruiter query...' : 'AI is analyzing the top 10 current search results...');
         $('#aiSummaryPanel').removeClass('is-visible');
         $('#aiSummaryText').text('Waiting for AI shortlist...');
         $('#aiTopFiveList').html('');
         $('#aiSkillsHeatmap').html('');
         $('#aiExperienceDistribution').html('');
         $('#aiNoticePeriodAnalysis').html('');
+        $('#resumeEmptyState').hide();
         $('#candidateGrid').addClass('ai-mode');
         $('.card-ai-insight').removeClass('is-visible');
         $('.candidate-card').removeClass('ai-ready ai-collapsed');
@@ -688,17 +743,22 @@ $(function () {
             role: $('#role').val(),
             experience: $('#experience').val(),
             lead_status: $('#lead_status').val(),
-            source: $('#source').val()
+            source: $('#source').val(),
+            ai_query: aiQuery
         }, function (response) {
             stopAiProgressAnimation();
             if (Array.isArray(response.candidate_rows) && response.candidate_rows.length) {
                 renderCandidateCards(response.candidate_rows);
                 $('#candidateGrid').addClass('ai-mode');
+                $('#resumeEmptyState').hide();
             }
 
             if (!response.ok) {
                 $('#aiInsightMessage').text(response.message || 'Could not generate AI insights.');
                 updateAiProgress(100, 'AI search failed.');
+                if (!Array.isArray(response.candidate_rows) || !response.candidate_rows.length) {
+                    $('#resumeEmptyState').show();
+                }
                 return;
             }
 
@@ -776,6 +836,7 @@ $(function () {
             }
             $('#aiInsightMessage').text(errorText);
             updateAiProgress(100, 'AI search failed.');
+            $('#resumeEmptyState').show();
         });
     });
 
