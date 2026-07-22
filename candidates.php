@@ -119,6 +119,23 @@ div.dataTables_info{
 .dropdown-menu i{
     opacity: 1
 }
+.careers-import-row td {
+    background: #f2fbf6 !important;
+}
+.careers-import-pill {
+    display: inline-block;
+    margin-top: 5px;
+    background: #0f9d58;
+    border-radius: 999px;
+    padding: 4px 8px;
+    font-size: 11px;
+}
+.resume-unavailable-action {
+    cursor: not-allowed !important;
+    opacity: .78;
+    margin-right: 4px;
+    white-space: nowrap;
+}
 .pdfion{
     width: 15px;
     margin-right: 10px;
@@ -358,7 +375,7 @@ div.dataTables_info{
                 <thead>
                     <tr>
                          <th class="text-center"><label class="csscheckbox csscheckbox-primary"><input class="checkmark" type="checkbox"><span></span></label></th>
-                         <th class="text-center" style="width: 75px;"><i class="fa fa-flash"></i></th>
+                         <th class="text-center" style="width: 170px;"><i class="fa fa-flash"></i></th>
                         <th>Name</th>
                         <th>Email</th>
                         <th>Phone number</th>

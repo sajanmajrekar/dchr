@@ -161,6 +161,36 @@ function formatNormalizedExperienceDisplay($value)
     return $formatted;
 }
 
+function fetchMyLeadsEsc($value)
+{
+    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+}
+
+function fetchMyLeadsResumeIsAvailable($resumeName)
+{
+    $resumeName = basename(str_replace('\\', '/', (string) $resumeName));
+    if ($resumeName === '' || $resumeName === '.' || $resumeName === '..') {
+        return false;
+    }
+
+    $root = dirname(__DIR__);
+    $directories = array(
+        $root . DIRECTORY_SEPARATOR . 'resume',
+        $root . DIRECTORY_SEPARATOR . 'Resume',
+        $root . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'resume',
+        $root . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'resumes'
+    );
+
+    foreach ($directories as $directory) {
+        $path = rtrim($directory, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $resumeName;
+        if (is_file($path) && is_readable($path) && (int) @filesize($path) > 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function buildLeadWhereClause($connect)
 {
     $conditions = array();
@@ -340,30 +370,37 @@ try {
         $leadLastContact = isset($row['lastcontact']) ? $row['lastcontact'] : '';
         $leadStatusName = isset($row['lead_status_name']) ? $row['lead_status_name'] : '';
         $leadResume = isset($row['resume']) ? $row['resume'] : '';
+        $leadAdditionalInfo = isset($row['ainfo']) ? $row['ainfo'] : '';
+        $isCareersImport = stripos((string) $leadAdditionalInfo, 'Imported from careers email.') !== false;
 
-        if (!empty($leadResume)) {
+        if (!empty($leadResume) && fetchMyLeadsResumeIsAvailable($leadResume)) {
             $resumeUrl = 'view_resume.php?file=' . rawurlencode($leadResume);
-            $button = '<center><a href="' . $resumeUrl . '" title="View Resume" target="_blank" class="btn btn-effect-ripple btn-xs btn-success"><i class="fa  fa-eye"></i></a><a data-target="#editMyLeadModal" onclick="editMyLead(' . $leadid . ')" data-toggle="modal" title="Edit User" class="btn btn-effect-ripple btn-xs btn-success"><i class="fa fa-pencil"></i></a>';
+            $button = '<center><a href="' . $resumeUrl . '" title="View Resume" target="_blank" class="btn btn-effect-ripple btn-xs btn-success"><i class="fa fa-eye"></i></a><a data-target="#editMyLeadModal" onclick="editMyLead(' . $leadid . ')" data-toggle="modal" title="Edit User" class="btn btn-effect-ripple btn-xs btn-success"><i class="fa fa-pencil"></i></a></center>';
         } else {
-            $button = '<center><a data-target="#editMyLeadModal" onclick="editMyLead(' . $leadid . ')" data-toggle="modal" title="Edit User" class="btn btn-effect-ripple btn-xs btn-success"><i class="fa fa-pencil"></i></a>';
+            $button = '<center><span title="Resume not available" class="btn btn-effect-ripple btn-xs btn-default disabled resume-unavailable-action"><i class="fa fa-eye-slash"></i> Resume not available</span><a data-target="#editMyLeadModal" onclick="editMyLead(' . $leadid . ')" data-toggle="modal" title="Edit User" class="btn btn-effect-ripple btn-xs btn-success"><i class="fa fa-pencil"></i></a></center>';
+        }
+
+        $nameCell = '<a data-target="#editMyLeadModal" onclick="editMyLead(' . $leadid . ')" href="#" data-toggle="modal" title="' . fetchMyLeadsEsc($leadName) . '">' . fetchMyLeadsEsc($leadName) . '</a>';
+        if ($isCareersImport) {
+            $nameCell .= '<div><span class="label label-info careers-import-pill">Careers Import</span> <small class="text-muted">resume-only email</small></div>';
         }
 
         $output['data'][] = array(
             '<center><label class="csscheckbox csscheckbox-primary"><input type="checkbox" class="checkmark" name="leadcheckbox" value="' . $leadid . '"><span></span></label></center>',
             $button,
-            '<a data-target="#editMyLeadModal" onclick="editMyLead(' . $leadid . ')" href="#" data-toggle="modal" title="' . $leadName . '">' . $leadName . '</a>',
-            $leadEmail,
-            $leadPhone,
-            $leadCity,
-            $leadWillingToRelocate,
+            $nameCell,
+            fetchMyLeadsEsc($leadEmail),
+            fetchMyLeadsEsc($leadPhone),
+            fetchMyLeadsEsc($leadCity),
+            fetchMyLeadsEsc($leadWillingToRelocate),
             getroletext($leadRoles),
-            $leadExperience,
-            $leadCurrentSalary,
-            $leadExpectedSalary,
-            $leadNoticePeriod,
+            fetchMyLeadsEsc($leadExperience),
+            fetchMyLeadsEsc($leadCurrentSalary),
+            fetchMyLeadsEsc($leadExpectedSalary),
+            fetchMyLeadsEsc($leadNoticePeriod),
             !empty($leadDateAdded) ? date("d M, Y", strtotime($leadDateAdded)) : '',
             time_ago($leadLastContact),
-            $leadStatusName
+            fetchMyLeadsEsc($leadStatusName)
         );
     }
 

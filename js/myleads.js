@@ -62,6 +62,11 @@ $('#downloadsample').click(function(e) {
                                 }
                             },
                             dom: 'lBfrtip',
+                            createdRow: function(row, data) {
+                                if (data && data[2] && String(data[2]).indexOf('careers-import-pill') !== -1) {
+                                    $(row).addClass('careers-import-row');
+                                }
+                            },
                             "ajax" : {
                                 url:"php_actions/fetchMyLeads.php",
                                 type:"POST",
