@@ -375,9 +375,9 @@ try {
 
         if (!empty($leadResume) && fetchMyLeadsResumeIsAvailable($leadResume)) {
             $resumeUrl = 'view_resume.php?file=' . rawurlencode($leadResume);
-            $button = '<center><a href="' . $resumeUrl . '" title="View Resume" target="_blank" class="btn btn-effect-ripple btn-xs btn-success"><i class="fa fa-eye"></i></a><a data-target="#editMyLeadModal" onclick="editMyLead(' . $leadid . ')" data-toggle="modal" title="Edit User" class="btn btn-effect-ripple btn-xs btn-success"><i class="fa fa-pencil"></i></a></center>';
+            $button = '<div class="candidate-actions-cell"><a href="' . $resumeUrl . '" title="View Resume" target="_blank" class="btn btn-effect-ripple btn-xs btn-success"><i class="fa fa-eye"></i></a><a data-target="#editMyLeadModal" onclick="editMyLead(' . $leadid . ')" data-toggle="modal" title="Edit Candidate" class="btn btn-effect-ripple btn-xs btn-success"><i class="fa fa-pencil"></i></a></div>';
         } else {
-            $button = '<center><span title="Resume not available" class="btn btn-effect-ripple btn-xs btn-default disabled resume-unavailable-action"><i class="fa fa-eye-slash"></i> Resume not available</span><a data-target="#editMyLeadModal" onclick="editMyLead(' . $leadid . ')" data-toggle="modal" title="Edit User" class="btn btn-effect-ripple btn-xs btn-success"><i class="fa fa-pencil"></i></a></center>';
+            $button = '<div class="candidate-actions-cell"><span title="Resume not available" class="btn btn-effect-ripple btn-xs btn-default disabled resume-unavailable-action"><i class="fa fa-eye-slash"></i> Resume not available</span><a data-target="#editMyLeadModal" onclick="editMyLead(' . $leadid . ')" data-toggle="modal" title="Edit Candidate" class="btn btn-effect-ripple btn-xs btn-success"><i class="fa fa-pencil"></i></a></div>';
         }
 
         $nameCell = '<a data-target="#editMyLeadModal" onclick="editMyLead(' . $leadid . ')" href="#" data-toggle="modal" title="' . fetchMyLeadsEsc($leadName) . '">' . fetchMyLeadsEsc($leadName) . '</a>';

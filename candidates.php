@@ -133,8 +133,15 @@ div.dataTables_info{
 .resume-unavailable-action {
     cursor: not-allowed !important;
     opacity: .78;
-    margin-right: 4px;
+    margin-right: 6px;
     white-space: nowrap;
+}
+.candidate-actions-cell {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
 }
 .pdfion{
     width: 15px;
@@ -375,7 +382,7 @@ div.dataTables_info{
                 <thead>
                     <tr>
                          <th class="text-center"><label class="csscheckbox csscheckbox-primary"><input class="checkmark" type="checkbox"><span></span></label></th>
-                         <th class="text-center" style="width: 170px;"><i class="fa fa-flash"></i></th>
+                         <th class="text-center" style="width: 170px;">Actions</th>
                         <th>Name</th>
                         <th>Email</th>
                         <th>Phone number</th>
