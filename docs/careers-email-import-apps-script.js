@@ -13,6 +13,7 @@ const CRM_IMPORT_TOKEN = 'PASTE_THE_SAME_TOKEN_FROM_inc_local_config_php';
 const PROCESSED_LABEL = 'CRM_IMPORTED';
 const SEARCH_QUERY = 'to:careers@digichefs.com has:attachment -label:' + PROCESSED_LABEL;
 const MAX_THREADS_PER_RUN = 10;
+const MAX_BODY_CHARS = 12000;
 
 function importCareersResumes() {
   const label = getOrCreateLabel_(PROCESSED_LABEL);
@@ -34,31 +35,28 @@ function importCareersResumes() {
 }
 
 function postMessageToCrm_(message) {
-  const attachments = message.getAttachments()
-    .filter(function(file) {
-      return /\.(pdf|doc|docx|rtf|txt)$/i.test(file.getName());
-    })
-    .map(function(file) {
-      return {
-        filename: file.getName(),
-        mime_type: file.getContentType(),
-        data_base64: Utilities.base64Encode(file.getBytes())
-      };
-    });
+  const resumeAttachment = message.getAttachments().find(function(file) {
+    return /\.(pdf|doc|docx|rtf|txt)$/i.test(file.getName());
+  });
 
-  if (!attachments.length) {
+  if (!resumeAttachment) {
     return;
   }
 
+  const bodyText = String(message.getPlainBody() || '').slice(0, MAX_BODY_CHARS);
   const payload = {
     token: CRM_IMPORT_TOKEN,
     message_id: message.getId(),
     from_email: extractEmail_(message.getFrom()),
     from_name: extractName_(message.getFrom()),
     subject: message.getSubject(),
-    body_text: message.getPlainBody(),
+    body_text: bodyText,
     received_at: message.getDate().toISOString(),
-    attachments: attachments
+    attachments: [{
+      filename: resumeAttachment.getName(),
+      mime_type: resumeAttachment.getContentType(),
+      data_base64: Utilities.base64Encode(resumeAttachment.getBytes())
+    }]
   };
 
   const response = UrlFetchApp.fetch(CRM_WEBHOOK_URL, {
@@ -70,7 +68,7 @@ function postMessageToCrm_(message) {
 
   const code = response.getResponseCode();
   if (code < 200 || code >= 300) {
-    throw new Error('CRM import failed. HTTP ' + code + ': ' + response.getContentText());
+    throw new Error('CRM import failed. HTTP ' + code + ': ' + response.getContentText().slice(0, 1000));
   }
 }
 
