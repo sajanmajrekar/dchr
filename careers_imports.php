@@ -173,6 +173,22 @@ foreach ($rows as $row) {
     background: #fff4dc;
     color: #9a6200;
 }
+.careers-badge.db {
+    background: #e8f5ff;
+    color: #1769aa;
+}
+.careers-explainer {
+    background: #fff;
+    border: 1px solid #dfead9;
+    border-left: 5px solid #0f6b43;
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin-bottom: 18px;
+    color: #2d3b32;
+}
+.careers-explainer strong {
+    color: #123f2d;
+}
 .careers-table td {
     vertical-align: middle !important;
 }
@@ -204,6 +220,11 @@ foreach ($rows as $row) {
         <div class="careers-hero">
             <h1>Resume Intake Queue</h1>
             <p>Emails with resume attachments are stored as CRM candidates, then indexed into the resume library when possible. This page keeps those auto-created records easy to audit.</p>
+        </div>
+
+        <div class="careers-explainer">
+            <strong>How to read this page:</strong>
+            <span>if a row appears here, it is already saved in the CRM database inside <code>tblleads</code>. The import status only tells whether the resume text was also indexed inside <code>resume_documents</code> for AI/search.</span>
         </div>
 
         <div class="careers-stats">
@@ -238,6 +259,7 @@ foreach ($rows as $row) {
                             <th>Candidate</th>
                             <th>Contact</th>
                             <th>Resume</th>
+                            <th>CRM DB</th>
                             <th>Import Status</th>
                             <th>Skills</th>
                             <th>Imported</th>
@@ -247,7 +269,7 @@ foreach ($rows as $row) {
                     <tbody>
                         <?php if (empty($rows)) { ?>
                             <tr>
-                                <td colspan="7" class="text-center text-muted">No careers email imports found yet.</td>
+                                <td colspan="8" class="text-center text-muted">No careers email imports found yet.</td>
                             </tr>
                         <?php } ?>
                         <?php foreach ($rows as $row) {
@@ -268,6 +290,7 @@ foreach ($rows as $row) {
                                     <?php echo careersImportsEsc($resume); ?><br>
                                     <small class="text-muted"><?php echo !empty($row['source_name']) ? careersImportsEsc($row['source_name']) : 'Careers email'; ?></small>
                                 </td>
+                                <td><span class="careers-badge db">Stored</span></td>
                                 <td>
                                     <span class="careers-badge<?php echo $isCompleted ? '' : ' warn'; ?>"><?php echo careersImportsEsc(ucwords(str_replace('_', ' ', $status))); ?></span>
                                     <?php if (!$isCompleted && !empty($row['last_error'])) { ?>
