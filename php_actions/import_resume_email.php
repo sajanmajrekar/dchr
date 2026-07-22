@@ -4,6 +4,35 @@ ob_start();
 @ini_set('display_errors', '0');
 error_reporting(E_ALL);
 header('Content-Type: application/json');
+if (function_exists('mysqli_report')) {
+    mysqli_report(MYSQLI_REPORT_OFF);
+}
+
+register_shutdown_function(function () {
+    $error = error_get_last();
+    $fatalTypes = array(E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR);
+    if (!is_array($error) || !in_array($error['type'], $fatalTypes, true)) {
+        return;
+    }
+
+    while (ob_get_level() > 0) {
+        @ob_end_clean();
+    }
+
+    if (!headers_sent()) {
+        header('Content-Type: application/json');
+    }
+
+    $message = 'Careers import fatal error: ' . (isset($error['message']) ? $error['message'] : 'Unknown PHP fatal error.');
+    error_log($message . ' in ' . (isset($error['file']) ? $error['file'] : 'unknown file') . ':' . (isset($error['line']) ? $error['line'] : '0'));
+
+    echo json_encode(array(
+        'ok' => false,
+        'message' => $message,
+        'file' => isset($error['file']) ? basename($error['file']) : '',
+        'line' => isset($error['line']) ? (int) $error['line'] : 0
+    ), JSON_UNESCAPED_SLASHES);
+});
 
 require_once 'core.php';
 require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'includes' . DIRECTORY_SEPARATOR . 'resume_intelligence.php';
@@ -19,13 +48,33 @@ function careersImportJson($payload)
         @ob_end_clean();
     }
 
-    echo resumeJsonEncode($payload, JSON_UNESCAPED_SLASHES);
+    if (!headers_sent()) {
+        header('Content-Type: application/json');
+    }
+
+    echo function_exists('resumeJsonEncode')
+        ? resumeJsonEncode($payload, JSON_UNESCAPED_SLASHES)
+        : json_encode($payload, JSON_UNESCAPED_SLASHES);
     exit();
 }
 
 function careersImportLog($message, $context = array())
 {
-    resumeIntelligenceLog('careers_email_import', $message, $context);
+    if (function_exists('resumeIntelligenceLog')) {
+        resumeIntelligenceLog('careers_email_import', $message, $context);
+        return;
+    }
+
+    error_log('careers_email_import: ' . $message . ' ' . json_encode($context, JSON_UNESCAPED_SLASHES));
+}
+
+function careersImportTokenMatches($expectedToken, $providedToken)
+{
+    if (function_exists('hash_equals')) {
+        return hash_equals($expectedToken, $providedToken);
+    }
+
+    return (string) $expectedToken === (string) $providedToken;
 }
 
 function careersImportHeaderValue($name)
@@ -204,11 +253,22 @@ if (!is_array($payload)) {
 
 $expectedToken = isset($careers_email_import_token) ? trim((string) $careers_email_import_token) : '';
 $providedToken = careersImportProvidedToken($payload);
-if ($expectedToken === '' || !hash_equals($expectedToken, $providedToken)) {
+if ($expectedToken === '' || !careersImportTokenMatches($expectedToken, $providedToken)) {
     careersImportLog('Rejected careers email import because token was missing or invalid.', array(
         'message_id' => isset($payload['message_id']) ? $payload['message_id'] : ''
     ));
     careersImportJson(array('ok' => false, 'message' => 'Unauthorized.'));
+}
+
+if ((!isset($connect) || !(class_exists('mysqli') && $connect instanceof mysqli)) && isset($conn) && class_exists('mysqli') && $conn instanceof mysqli) {
+    $connect = $conn;
+}
+
+if (!isset($connect) || !(class_exists('mysqli') && $connect instanceof mysqli)) {
+    careersImportLog('Careers email import could not access the CRM database connection.', array(
+        'message_id' => isset($payload['message_id']) ? $payload['message_id'] : ''
+    ));
+    careersImportJson(array('ok' => false, 'message' => 'CRM database connection is not available in the import webhook.'));
 }
 
 $attachments = isset($payload['attachments']) && is_array($payload['attachments']) ? $payload['attachments'] : array();
@@ -263,7 +323,9 @@ $existingLead = careersImportFindLeadByEmail($connect, $fromEmail);
 $created = false;
 if ($existingLead) {
     $leadId = (int) $existingLead['id'];
-    careersImportUpdateLeadResume($connect, $leadId, $phone, $savedResume['stored_name'], $note);
+    if (!careersImportUpdateLeadResume($connect, $leadId, $phone, $savedResume['stored_name'], $note)) {
+        careersImportJson(array('ok' => false, 'message' => 'Could not update existing CRM candidate.'));
+    }
 } else {
     $leadId = careersImportCreateLead($connect, $name, $fromEmail, $phone, $sourceId, $statusId, $savedResume['stored_name'], $note);
     $created = $leadId > 0;
@@ -280,7 +342,17 @@ $lead = array(
     'phonenumber' => $existingLead && !empty($existingLead['phonenumber']) ? $existingLead['phonenumber'] : $phone,
     'resume' => $savedResume['stored_name']
 );
-$indexResult = processResumeLead($connect, $lead);
+$indexResult = array('ok' => false);
+if (function_exists('processResumeLead')) {
+    try {
+        $indexResult = processResumeLead($connect, $lead);
+    } catch (Exception $e) {
+        careersImportLog('Resume indexing failed after careers email import.', array(
+            'lead_id' => $leadId,
+            'message' => $e->getMessage()
+        ));
+    }
+}
 
 careersImportLog('Careers email imported into CRM.', array(
     'lead_id' => $leadId,
