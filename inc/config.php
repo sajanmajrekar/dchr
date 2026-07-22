@@ -125,6 +125,11 @@ $primary_nav = array(
                 'name'  => 'Resume Library',
                 'url'   => 'resume_library.php',
                 'type'  => true
+            ),
+            array(
+                'name'  => 'Careers Imports',
+                'url'   => 'careers_imports.php',
+                'type'  => true
             )
         )
     ),
@@ -228,6 +233,11 @@ $primary_nav = array(
             array(
                 'name'  => 'Resume Library',
                 'url'   => 'resume_library.php',
+                'type'  => true
+            ),
+            array(
+                'name'  => 'Careers Imports',
+                'url'   => 'careers_imports.php',
                 'type'  => true
             )
         )
