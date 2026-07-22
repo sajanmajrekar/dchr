@@ -507,3 +507,6 @@ $(".dropzone").dropzone({
 
 
 <?php include 'inc/template_end.php'; ?>
+
+
+
