@@ -316,7 +316,7 @@ try {
         $length = 10;
     }
 
-    $baseFrom = " FROM tblleads INNER JOIN tblleadssources ON tblleads.source = tblleadssources.id INNER JOIN tblleadsstatus ON tblleads.status = tblleadsstatus.id";
+    $baseFrom = " FROM tblleads LEFT JOIN tblleadssources ON tblleads.source = tblleadssources.id LEFT JOIN tblleadsstatus ON tblleads.status = tblleadsstatus.id";
     $whereClause = buildLeadWhereClause($connect);
     $orderClause = buildLeadOrderBy();
 
