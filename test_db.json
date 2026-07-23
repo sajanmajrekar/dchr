@@ -1,0 +1,72 @@
+[
+    {
+        "id": "11463",
+        "name": "Indu",
+        "city": "Faridabad",
+        "country": "",
+        "willing_to_relocate": null,
+        "csalary": "780000",
+        "esalary": "1080000",
+        "nperiod": "20",
+        "qualification": "",
+        "cjtitle": "",
+        "cemployer": "",
+        "skillset": "end to end recruitment, people skills and solution oriented"
+    },
+    {
+        "id": "11462",
+        "name": "Sneha Sheregar",
+        "city": "DOMBIVALI",
+        "country": "",
+        "willing_to_relocate": null,
+        "csalary": "360000",
+        "esalary": "720000",
+        "nperiod": "30",
+        "qualification": "",
+        "cjtitle": "",
+        "cemployer": "",
+        "skillset": " Marketing Strategy & Campaign Planning, Content & Growth Marketing, Client Management & Communication"
+    },
+    {
+        "id": "11461",
+        "name": "Kanika Aggarwal",
+        "city": "Ghaziabad",
+        "country": "",
+        "willing_to_relocate": null,
+        "csalary": "3",
+        "esalary": "4",
+        "nperiod": "0",
+        "qualification": "",
+        "cjtitle": "",
+        "cemployer": "",
+        "skillset": "Blog writing, creative writing, SEO"
+    },
+    {
+        "id": "11460",
+        "name": "Aman Singh",
+        "city": "Nalasopara",
+        "country": "",
+        "willing_to_relocate": null,
+        "csalary": "60000",
+        "esalary": "300000",
+        "nperiod": "0",
+        "qualification": "",
+        "cjtitle": "",
+        "cemployer": "",
+        "skillset": "Javascript, React.js, Tailwindcss"
+    },
+    {
+        "id": "11459",
+        "name": "Uttkarsh Singh",
+        "city": "dehradun",
+        "country": "",
+        "willing_to_relocate": null,
+        "csalary": "450000",
+        "esalary": "600000",
+        "nperiod": "10",
+        "qualification": "",
+        "cjtitle": "",
+        "cemployer": "",
+        "skillset": "Taking initiave ,Marketing magician ,sales god"
+    }
+]

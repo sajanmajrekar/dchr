@@ -1,0 +1,37 @@
+[
+    {
+        "id": "1691",
+        "lead_id": "1691",
+        "city": "Gurgaon",
+        "csalary": "NA",
+        "status_name": "New Candidate"
+    },
+    {
+        "id": "11454",
+        "lead_id": "11454",
+        "city": "Marol, Mumbai",
+        "csalary": "4 LPA",
+        "status_name": "New Candidate"
+    },
+    {
+        "id": "11455",
+        "lead_id": "11455",
+        "city": "Mumbai",
+        "csalary": "2300000",
+        "status_name": "New Candidate"
+    },
+    {
+        "id": "11456",
+        "lead_id": "11456",
+        "city": "Mumbai",
+        "csalary": "35,000",
+        "status_name": "New Candidate"
+    },
+    {
+        "id": "11457",
+        "lead_id": "11457",
+        "city": "BHUJ",
+        "csalary": "Na, freelancer",
+        "status_name": "New Candidate"
+    }
+]
