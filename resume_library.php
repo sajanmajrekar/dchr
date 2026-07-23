@@ -150,8 +150,8 @@ function resumeLibraryFindOptionIdInText($options, $text)
 function resumeLibraryExtractAiKeywords($aiQuery)
 {
     $knownSkills = array(
-        'SEO' => array('seo', 'search engine optimization', 'search engine optimisation'),
-        'Google Ads' => array('google ads', 'adwords', 'paid search'),
+        'SEO' => array('seo', 'search engine optimization', 'search engine optimisation', 'on page', 'onpage', 'on page seo', 'off page', 'offpage', 'off page seo'),
+        'Google Ads' => array('google ads', 'adwords', 'paid search', 'paid media', 'ppc', 'paid'),
         'Meta Ads' => array('meta ads', 'facebook ads', 'instagram ads'),
         'Social Media' => array('social media'),
         'Content Writing' => array('content writing', 'content writer'),
@@ -240,16 +240,17 @@ function resumeLibraryDeriveFiltersFromAiQuery($aiQuery, $filters, $roleOptions,
     }
 
     $currentCtc = resumeLibraryExtractNumberNear($text, array(
-        '/(?:current ctc|current salary|present ctc|present salary)\s*(?:below|under|upto|up to|less than|<=|:)?\s*(\d+(?:\.\d+)?\s*(?:lpa|lakh|lakhs|lac|lacs|k)?)/',
-        '/(?:below|under|upto|up to|less than)\s*(\d+(?:\.\d+)?\s*(?:lpa|lakh|lakhs|lac|lacs|k)?)\s*(?:current ctc|current salary|ctc)/'
+        '/(?:current ctc|current salary|present ctc|present salary)\s*(?:below|under|upto|up to|less than|<=|:|is)?\s*(\d+(?:\.\d+)?\s*(?:l|lp|lpa|lps|lakh|lakhs|lac|lacs|k)?)/',
+        '/(?:below|under|upto|up to|less than)\s*(\d+(?:\.\d+)?\s*(?:l|lp|lpa|lps|lakh|lakhs|lac|lacs|k)?)\s*(?:current ctc|current salary|ctc)/'
     ));
     if ($currentCtc !== '') {
         $derived['current_ctc'] = $currentCtc;
     }
 
     $expectedCtc = resumeLibraryExtractNumberNear($text, array(
-        '/(?:expected ctc|expected salary|expectation)\s*(?:below|under|upto|up to|less than|<=|:)?\s*(\d+(?:\.\d+)?\s*(?:lpa|lakh|lakhs|lac|lacs|k)?)/',
-        '/(?:below|under|upto|up to|less than)\s*(\d+(?:\.\d+)?\s*(?:lpa|lakh|lakhs|lac|lacs|k)?)\s*(?:expected ctc|expected salary)/'
+        '/(?:expected ctc|expected salary|expectation)\s*(?:below|under|upto|up to|less than|<=|:|is)?\s*(\d+(?:\.\d+)?\s*(?:l|lp|lpa|lps|lakh|lakhs|lac|lacs|k)?)/',
+        '/(?:budget|salary budget|ctc budget)\s*(?:below|under|upto|up to|less than|<=|:|is)?\s*(\d+(?:\.\d+)?\s*(?:l|lp|lpa|lps|lakh|lakhs|lac|lacs|k)?)/',
+        '/(?:below|under|upto|up to|less than)\s*(\d+(?:\.\d+)?\s*(?:l|lp|lpa|lps|lakh|lakhs|lac|lacs|k)?)\s*(?:expected ctc|expected salary|budget)/'
     ));
     if ($expectedCtc !== '') {
         $derived['expected_ctc'] = $expectedCtc;
@@ -336,10 +337,10 @@ function resumeLibraryBuildAiHiringBrief($filters, $aiQuery = '')
         $brief .= "\nSource filter ID: " . (int) $filters['source'];
         $brief .= "\nCity filter: " . (!empty($filters['city']) ? $filters['city'] : 'none');
         $brief .= "\nRelocation filter: " . (!empty($filters['relocate']) ? $filters['relocate'] : 'none');
-        $brief .= "\nCurrent CTC filter: " . (!empty($filters['current_ctc']) ? $filters['current_ctc'] : 'none');
-        $brief .= "\nExpected CTC filter: " . (!empty($filters['expected_ctc']) ? $filters['expected_ctc'] : 'none');
-        $brief .= "\nNotice period filter: " . (!empty($filters['notice_period']) ? $filters['notice_period'] : 'none');
-        $brief .= "\nDate added filter: " . (!empty($filters['interval']) ? $filters['interval'] : 'none');
+        $brief .= "\nCurrent CTC filter: " . (trim((string) $filters['current_ctc']) !== '' ? $filters['current_ctc'] : 'none');
+        $brief .= "\nExpected CTC filter: " . (trim((string) $filters['expected_ctc']) !== '' ? $filters['expected_ctc'] : 'none');
+        $brief .= "\nNotice period filter: " . (trim((string) $filters['notice_period']) !== '' ? $filters['notice_period'] : 'none');
+        $brief .= "\nDate added filter: " . (trim((string) $filters['interval']) !== '' ? $filters['interval'] : 'none');
         $brief .= "\n\nTask: Interpret the recruiter request, find the strongest matching candidates from the provided resumes, and explain why they match. Use resume text, skills, experience, and notice period as evidence.";
         return $brief;
     }
@@ -351,10 +352,10 @@ function resumeLibraryBuildAiHiringBrief($filters, $aiQuery = '')
     $brief .= "\nSource filter ID: " . (int) $filters['source'];
     $brief .= "\nCity filter: " . (!empty($filters['city']) ? $filters['city'] : 'none');
     $brief .= "\nRelocation filter: " . (!empty($filters['relocate']) ? $filters['relocate'] : 'none');
-    $brief .= "\nCurrent CTC filter: " . (!empty($filters['current_ctc']) ? $filters['current_ctc'] : 'none');
-    $brief .= "\nExpected CTC filter: " . (!empty($filters['expected_ctc']) ? $filters['expected_ctc'] : 'none');
-    $brief .= "\nNotice period filter: " . (!empty($filters['notice_period']) ? $filters['notice_period'] : 'none');
-    $brief .= "\nDate added filter: " . (!empty($filters['interval']) ? $filters['interval'] : 'none');
+    $brief .= "\nCurrent CTC filter: " . (trim((string) $filters['current_ctc']) !== '' ? $filters['current_ctc'] : 'none');
+    $brief .= "\nExpected CTC filter: " . (trim((string) $filters['expected_ctc']) !== '' ? $filters['expected_ctc'] : 'none');
+    $brief .= "\nNotice period filter: " . (trim((string) $filters['notice_period']) !== '' ? $filters['notice_period'] : 'none');
+    $brief .= "\nDate added filter: " . (trim((string) $filters['interval']) !== '' ? $filters['interval'] : 'none');
     $brief .= "\nTask: Review the top search results and explain fit for this search.";
 
     return $brief;
@@ -406,9 +407,9 @@ if ($requestMethod === 'POST' && $action !== '') {
                 'Source' => resumeLibraryOptionName($debugSourceOptions, $effectiveFilters['source'], 'Any source'),
                 'City' => !empty($effectiveFilters['city']) ? $effectiveFilters['city'] : 'Any city',
                 'Relocate' => !empty($effectiveFilters['relocate']) ? $effectiveFilters['relocate'] : 'Any',
-                'Current CTC' => !empty($effectiveFilters['current_ctc']) ? '<= ' . $effectiveFilters['current_ctc'] : 'Any current CTC',
-                'Expected CTC' => !empty($effectiveFilters['expected_ctc']) ? '<= ' . $effectiveFilters['expected_ctc'] : 'Any expected CTC',
-                'Notice Period' => !empty($effectiveFilters['notice_period']) ? $effectiveFilters['notice_period'] : 'Any notice period',
+                'Current CTC' => trim((string) $effectiveFilters['current_ctc']) !== '' ? '<= ' . $effectiveFilters['current_ctc'] : 'Any current CTC',
+                'Expected CTC' => trim((string) $effectiveFilters['expected_ctc']) !== '' ? '<= ' . $effectiveFilters['expected_ctc'] : 'Any expected CTC',
+                'Notice Period' => trim((string) $effectiveFilters['notice_period']) !== '' ? $effectiveFilters['notice_period'] . ' days or less' : 'Any notice period',
                 'Date Added' => resumeLibraryIntervalLabel(isset($effectiveFilters['interval']) ? $effectiveFilters['interval'] : ''),
                 'Resume status' => 'Completed resumes only'
             ),
