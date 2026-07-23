@@ -58,6 +58,59 @@ function resumeLibraryEsc($value)
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
 
+function resumeLibraryOptionName($options, $selectedId, $fallback)
+{
+    $selectedId = (int) $selectedId;
+    if ($selectedId <= 0) {
+        return $fallback;
+    }
+
+    foreach ((array) $options as $option) {
+        if (isset($option['id']) && (int) $option['id'] === $selectedId) {
+            return isset($option['name']) ? (string) $option['name'] : $fallback;
+        }
+    }
+
+    return 'ID ' . $selectedId;
+}
+
+function resumeLibraryCleanDetailValue($value)
+{
+    $value = trim((string) $value);
+    if ($value === '' || in_array(strtolower($value), array('na', 'n/a', 'none', 'null', '-'), true)) {
+        return '';
+    }
+
+    return $value;
+}
+
+function resumeLibraryCandidateDetailRows($row)
+{
+    $details = array(
+        'Status' => isset($row['lead_status_name']) ? $row['lead_status_name'] : '',
+        'Source' => isset($row['lead_source_name']) ? $row['lead_source_name'] : '',
+        'City' => isset($row['city']) ? $row['city'] : '',
+        'Relocate' => isset($row['willing_to_relocate']) ? $row['willing_to_relocate'] : '',
+        'Current CTC' => isset($row['csalary']) ? $row['csalary'] : '',
+        'Expected CTC' => isset($row['esalary']) ? $row['esalary'] : '',
+        'Notice' => isset($row['nperiod']) ? $row['nperiod'] : '',
+        'Qualification' => isset($row['qualification']) ? $row['qualification'] : '',
+        'Current Title' => isset($row['cjtitle']) ? $row['cjtitle'] : '',
+        'Employer' => isset($row['cemployer']) ? $row['cemployer'] : '',
+        'Candidate Skills' => isset($row['skillset']) ? $row['skillset'] : ''
+    );
+
+    $rows = array();
+    foreach ($details as $label => $value) {
+        $cleanValue = resumeLibraryCleanDetailValue($value);
+        if ($cleanValue !== '') {
+            $rows[] = array('label' => $label, 'value' => $cleanValue);
+        }
+    }
+
+    return $rows;
+}
+
 function resumeLibraryUrl($overrides = array())
 {
     $params = $_GET;
@@ -154,9 +207,19 @@ if ($requestMethod === 'POST' && $action !== '') {
             $aiFilters['ai_query'] = $aiQuery;
         }
         $aiResult = requestGeminiResumeInsights($hiringBrief, $aiInputRows, $aiFilters);
+        $debugRoleOptions = fetchResumeRoleOptions($connect);
+        $debugStatusOptions = fetchResumeLeadStatusOptions($connect);
+        $debugSourceOptions = fetchResumeSourceOptions($connect);
         $aiResult['ai_debug'] = array(
             'recruiter_query' => $aiQuery !== '' ? $aiQuery : 'Not provided',
-            'structured_filters_sent' => $filters,
+            'filters_used' => array(
+                'Keyword' => $filters['q'] !== '' ? $filters['q'] : 'Any keyword',
+                'Role' => resumeLibraryOptionName($debugRoleOptions, $filters['role'], 'Any role'),
+                'Experience' => $filters['experience'] !== '' ? $filters['experience'] : 'Any experience',
+                'Status' => resumeLibraryOptionName($debugStatusOptions, $filters['lead_status'], 'Any status'),
+                'Source' => resumeLibraryOptionName($debugSourceOptions, $filters['source'], 'Any source'),
+                'Resume status' => 'Completed resumes only'
+            ),
             'candidate_retrieval' => array(
                 'source' => 'resume_documents joined with tblleads',
                 'status_filter' => 'completed resumes only',
@@ -727,18 +790,14 @@ if ($hasActiveFilters) {
                                     <strong>Applied:</strong> <?php echo resumeLibraryEsc($applyDateLabel); ?><br>
                                     <strong>Conversion:</strong> <?php echo resumeLibraryEsc($conversionInsight['label']); ?>
                                 </div>
-                                <div class="candidate-detail-grid">
-                                    <div><strong>Status:</strong> <?php echo resumeLibraryEsc(!empty($row['lead_status_name']) ? $row['lead_status_name'] : '-'); ?></div>
-                                    <div><strong>Source:</strong> <?php echo resumeLibraryEsc(!empty($row['lead_source_name']) ? $row['lead_source_name'] : '-'); ?></div>
-                                    <div><strong>City:</strong> <?php echo resumeLibraryEsc(!empty($row['city']) ? $row['city'] : '-'); ?></div>
-                                    <div><strong>Relocate:</strong> <?php echo resumeLibraryEsc(!empty($row['willing_to_relocate']) ? $row['willing_to_relocate'] : '-'); ?></div>
-                                    <div><strong>Current CTC:</strong> <?php echo resumeLibraryEsc(!empty($row['csalary']) ? $row['csalary'] : '-'); ?></div>
-                                    <div><strong>Expected CTC:</strong> <?php echo resumeLibraryEsc(!empty($row['esalary']) ? $row['esalary'] : '-'); ?></div>
-                                    <div><strong>Notice:</strong> <?php echo resumeLibraryEsc(!empty($row['nperiod']) ? $row['nperiod'] : '-'); ?></div>
-                                    <div><strong>Qualification:</strong> <?php echo resumeLibraryEsc(!empty($row['qualification']) ? $row['qualification'] : '-'); ?></div>
-                                    <div><strong>Current Title:</strong> <?php echo resumeLibraryEsc(!empty($row['cjtitle']) ? $row['cjtitle'] : '-'); ?></div>
-                                    <div><strong>Employer:</strong> <?php echo resumeLibraryEsc(!empty($row['cemployer']) ? $row['cemployer'] : '-'); ?></div>
-                                </div>
+                                <?php $detailRows = resumeLibraryCandidateDetailRows($row); ?>
+                                <?php if (!empty($detailRows)) { ?>
+                                    <div class="candidate-detail-grid">
+                                        <?php foreach ($detailRows as $detailRow) { ?>
+                                            <div><strong><?php echo resumeLibraryEsc($detailRow['label']); ?>:</strong> <?php echo resumeLibraryEsc($detailRow['value']); ?></div>
+                                        <?php } ?>
+                                    </div>
+                                <?php } ?>
                             </div>
                             <div class="experience-pill"><?php echo resumeLibraryEsc($experienceLabel); ?></div>
                         </div>
@@ -1097,23 +1156,42 @@ $(function () {
 
     function renderCandidateDetailGrid(row) {
         var items = [
-            ['Status', row.lead_status_name || '-'],
-            ['Source', row.lead_source_name || '-'],
-            ['City', row.city || '-'],
-            ['Relocate', row.willing_to_relocate || '-'],
-            ['Current CTC', row.csalary || '-'],
-            ['Expected CTC', row.esalary || '-'],
-            ['Notice', row.nperiod || '-'],
-            ['Qualification', row.qualification || '-'],
-            ['Current Title', row.cjtitle || '-'],
-            ['Employer', row.cemployer || '-']
+            ['Status', row.lead_status_name || ''],
+            ['Source', row.lead_source_name || ''],
+            ['City', row.city || ''],
+            ['Relocate', row.willing_to_relocate || ''],
+            ['Current CTC', row.csalary || ''],
+            ['Expected CTC', row.esalary || ''],
+            ['Notice', row.nperiod || ''],
+            ['Qualification', row.qualification || ''],
+            ['Current Title', row.cjtitle || ''],
+            ['Employer', row.cemployer || ''],
+            ['Candidate Skills', row.skillset || '']
         ];
         var html = '<div class="candidate-detail-grid">';
+        var visibleCount = 0;
         items.forEach(function (item) {
-            html += '<div><strong>' + escapeHtml(item[0]) + ':</strong> ' + escapeHtml(String(item[1] || '-')) + '</div>';
+            var value = cleanDetailValue(item[1]);
+            if (!value) {
+                return;
+            }
+            visibleCount++;
+            html += '<div><strong>' + escapeHtml(item[0]) + ':</strong> ' + escapeHtml(value) + '</div>';
         });
         html += '</div>';
-        return html;
+        return visibleCount ? html : '';
+    }
+
+    function cleanDetailValue(value) {
+        value = String(value || '').trim();
+        if (!value) {
+            return '';
+        }
+        var lowered = value.toLowerCase();
+        if (lowered === 'na' || lowered === 'n/a' || lowered === 'none' || lowered === 'null' || lowered === '-') {
+            return '';
+        }
+        return value;
     }
 
     function renderAiLog(debug, parsed) {
@@ -1128,14 +1206,43 @@ $(function () {
         var html = '<div class="ai-log-grid">';
         html += '<div class="ai-log-item"><strong>Recruiter Query</strong><div>' + escapeHtml(debug.recruiter_query || 'Not provided') + '</div></div>';
         html += '<div class="ai-log-item"><strong>Candidate Retrieval</strong><div>' + escapeHtml(debug.candidate_retrieval && debug.candidate_retrieval.note ? debug.candidate_retrieval.note : 'AI scores candidates returned by the visible filters.') + '</div></div>';
-        html += '<div class="ai-log-item"><strong>Structured Filters Sent</strong><pre class="ai-log-pre">' + escapeHtml(JSON.stringify(debug.structured_filters_sent || {}, null, 2)) + '</pre></div>';
-        html += '<div class="ai-log-item"><strong>AI Interpreted Filters</strong><pre class="ai-log-pre">' + escapeHtml(JSON.stringify(interpretedFilters, null, 2)) + '</pre></div>';
+        html += '<div class="ai-log-item"><strong>Filters Used Before AI</strong><div class="ai-summary-copy">' + renderKeyValueLines(debug.filters_used || {}) + '</div></div>';
+        html += '<div class="ai-log-item"><strong>AI Interpreted Requirement</strong><div class="ai-summary-copy">' + renderKeyValueLines(interpretedFilters) + '</div></div>';
         html += '<div class="ai-log-item"><strong>Search Strategy</strong><div class="ai-summary-copy">' + escapeHtml(typeof searchStrategy === 'string' ? searchStrategy : JSON.stringify(searchStrategy, null, 2)) + '</div></div>';
         html += '<div class="ai-log-item"><strong>Candidates Sent To AI</strong><div class="ai-summary-copy">' + candidateLines + '</div></div>';
         html += '<div class="ai-log-item"><strong>Counts</strong><div>Found before AI: ' + escapeHtml(String(debug.candidates_found_before_ai || 0)) + '<br>Sent to AI: ' + escapeHtml(String(candidates.length)) + '</div></div>';
         html += '<div class="ai-log-item"><strong>Hiring Brief Sent</strong><pre class="ai-log-pre">' + escapeHtml(debug.hiring_brief_sent_to_ai || '') + '</pre></div>';
         html += '</div>';
         $('#aiLogContent').html(html);
+    }
+
+    function renderKeyValueLines(value) {
+        if (!value || typeof value !== 'object') {
+            return '<span class="text-muted">Not available</span>';
+        }
+
+        var lines = [];
+        Object.keys(value).forEach(function (key) {
+            var item = value[key];
+            if (Array.isArray(item)) {
+                item = item.length ? item.join(', ') : 'Any';
+            } else if (item && typeof item === 'object') {
+                item = JSON.stringify(item);
+            }
+            item = String(item || '').trim();
+            if (item === '') {
+                item = 'Any';
+            }
+            lines.push('<strong>' + escapeHtml(humanizeKey(key)) + ':</strong> ' + escapeHtml(item));
+        });
+
+        return lines.length ? lines.join('<br>') : '<span class="text-muted">Not available</span>';
+    }
+
+    function humanizeKey(key) {
+        return String(key || '').replace(/_/g, ' ').replace(/\b\w/g, function (letter) {
+            return letter.toUpperCase();
+        });
     }
 
     function renderAiSummary(parsed) {
