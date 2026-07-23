@@ -105,15 +105,15 @@ function resumeLibraryCandidateDetailRows($row)
     $details = array(
         'Status' => isset($row['lead_status_name']) ? $row['lead_status_name'] : '',
         'Source' => isset($row['lead_source_name']) ? $row['lead_source_name'] : '',
-        'City' => isset($row['city']) ? $row['city'] : '',
-        'Relocate' => isset($row['willing_to_relocate']) ? $row['willing_to_relocate'] : '',
-        'Current CTC' => isset($row['csalary']) ? $row['csalary'] : '',
-        'Expected CTC' => isset($row['esalary']) ? $row['esalary'] : '',
-        'Notice' => isset($row['nperiod']) ? $row['nperiod'] : '',
-        'Qualification' => isset($row['qualification']) ? $row['qualification'] : '',
-        'Current Title' => isset($row['cjtitle']) ? $row['cjtitle'] : '',
-        'Employer' => isset($row['cemployer']) ? $row['cemployer'] : '',
-        'Candidate Skills' => isset($row['skillset']) ? $row['skillset'] : ''
+        'City' => resumeLibraryFirstDetailValue($row, array('lead_city', 'city', 'country', 'state')),
+        'Relocate' => resumeLibraryFirstDetailValue($row, array('lead_willing_to_relocate', 'willing_to_relocate')),
+        'Current CTC' => resumeLibraryFirstDetailValue($row, array('lead_csalary', 'csalary'), true),
+        'Expected CTC' => resumeLibraryFirstDetailValue($row, array('lead_esalary', 'esalary'), true),
+        'Notice' => resumeLibraryFirstDetailValue($row, array('lead_nperiod', 'nperiod'), true),
+        'Qualification' => resumeLibraryFirstDetailValue($row, array('lead_qualification', 'qualification')),
+        'Current Title' => resumeLibraryFirstDetailValue($row, array('lead_cjtitle', 'cjtitle')),
+        'Employer' => resumeLibraryFirstDetailValue($row, array('lead_cemployer', 'cemployer')),
+        'Candidate Skills' => resumeLibraryFirstDetailValue($row, array('lead_skillset', 'skillset', 'extracted_skills', 'ainfo'))
     );
 
     $rows = array();
@@ -122,6 +122,27 @@ function resumeLibraryCandidateDetailRows($row)
     }
 
     return $rows;
+}
+
+function resumeLibraryFirstDetailValue($row, $keys, $allowZero = false)
+{
+    foreach ((array) $keys as $key) {
+        if (!array_key_exists($key, $row) || $row[$key] === null) {
+            continue;
+        }
+
+        $value = trim((string) $row[$key]);
+        if ($value === '') {
+            continue;
+        }
+        if (!$allowZero && $value === '0') {
+            continue;
+        }
+
+        return $value;
+    }
+
+    return '';
 }
 
 function resumeLibraryNormalizeText($value)
@@ -1041,7 +1062,7 @@ if ($hasActiveFilters) {
                     $experienceLabel = formatDynamicExperienceLabel((string) $row['experiance'], (string) $row['dateadded']);
                     $applyDateLabel = formatResumeApplyDate((string) $row['dateadded']);
                     $conversionInsight = buildResumeConversionInsight((string) $row['dateadded'], isset($row['relevance_score']) ? (int) $row['relevance_score'] : 0);
-                    $skillsText = trim((string) $row['extracted_skills']) !== '' ? (string) $row['extracted_skills'] : (isset($row['skillset']) ? (string) $row['skillset'] : '');
+                    $skillsText = resumeLibraryFirstDetailValue($row, array('extracted_skills', 'lead_skillset', 'skillset', 'lead_ainfo', 'ainfo'));
                     $skills = array_filter(array_map('trim', explode(',', $skillsText)));
                     ?>
                     <div class="candidate-card"
@@ -1390,7 +1411,7 @@ $(function () {
             var conversionLabel = row.conversion_insight && row.conversion_insight.label ? row.conversion_insight.label : 'Needs review';
             var conversionReason = row.conversion_insight && row.conversion_insight.reason ? row.conversion_insight.reason : 'Manual review recommended.';
             var skillsHtml = '<span class="text-muted">No extracted skills yet</span>';
-            var skillsText = rowValue(row, 'extracted_skills').trim() !== '' ? rowValue(row, 'extracted_skills') : rowValue(row, 'skillset');
+            var skillsText = firstRowValue(row, ['extracted_skills', 'lead_skillset', 'skillset', 'lead_ainfo', 'ainfo']);
             if (skillsText.trim() !== '') {
                 var parts = [];
                 skillsText.split(',').forEach(function (skill, index) {
@@ -1427,15 +1448,15 @@ $(function () {
         var items = [
             ['Status', rowValue(row, 'lead_status_name')],
             ['Source', rowValue(row, 'lead_source_name')],
-            ['City', rowValue(row, 'city')],
-            ['Relocate', rowValue(row, 'willing_to_relocate')],
-            ['Current CTC', rowValue(row, 'csalary')],
-            ['Expected CTC', rowValue(row, 'esalary')],
-            ['Notice', rowValue(row, 'nperiod')],
-            ['Qualification', rowValue(row, 'qualification')],
-            ['Current Title', rowValue(row, 'cjtitle')],
-            ['Employer', rowValue(row, 'cemployer')],
-            ['Candidate Skills', rowValue(row, 'skillset')]
+            ['City', firstRowValue(row, ['lead_city', 'city', 'country', 'state'])],
+            ['Relocate', firstRowValue(row, ['lead_willing_to_relocate', 'willing_to_relocate'])],
+            ['Current CTC', firstRowValue(row, ['lead_csalary', 'csalary'], true)],
+            ['Expected CTC', firstRowValue(row, ['lead_esalary', 'esalary'], true)],
+            ['Notice', firstRowValue(row, ['lead_nperiod', 'nperiod'], true)],
+            ['Qualification', firstRowValue(row, ['lead_qualification', 'qualification'])],
+            ['Current Title', firstRowValue(row, ['lead_cjtitle', 'cjtitle'])],
+            ['Employer', firstRowValue(row, ['lead_cemployer', 'cemployer'])],
+            ['Candidate Skills', firstRowValue(row, ['lead_skillset', 'skillset', 'extracted_skills', 'ainfo'])]
         ];
         var html = '<div class="candidate-detail-grid">';
         items.forEach(function (item) {
@@ -1444,6 +1465,21 @@ $(function () {
         });
         html += '</div>';
         return html;
+    }
+
+    function firstRowValue(row, keys, allowZero) {
+        for (var i = 0; i < keys.length; i++) {
+            var value = rowValue(row, keys[i]).trim();
+            if (value === '') {
+                continue;
+            }
+            if (!allowZero && value === '0') {
+                continue;
+            }
+            return value;
+        }
+
+        return '';
     }
 
     function rowValue(row, key) {
