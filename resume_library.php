@@ -74,11 +74,27 @@ function resumeLibraryOptionName($options, $selectedId, $fallback)
     return 'ID ' . $selectedId;
 }
 
+function resumeLibraryIntervalLabel($interval)
+{
+    $interval = trim((string) $interval);
+    if ($interval === 'last-seven') {
+        return 'Last 7 days';
+    }
+    if ($interval === 'last-thirty') {
+        return 'Last 30 days';
+    }
+    if ($interval === 'last-month') {
+        return 'Last 3 months';
+    }
+
+    return 'Any date';
+}
+
 function resumeLibraryCleanDetailValue($value)
 {
     $value = trim((string) $value);
     if ($value === '' || in_array(strtolower($value), array('na', 'n/a', 'none', 'null', '-'), true)) {
-        return '';
+        return 'Not provided';
     }
 
     return $value;
@@ -102,13 +118,179 @@ function resumeLibraryCandidateDetailRows($row)
 
     $rows = array();
     foreach ($details as $label => $value) {
-        $cleanValue = resumeLibraryCleanDetailValue($value);
-        if ($cleanValue !== '') {
-            $rows[] = array('label' => $label, 'value' => $cleanValue);
-        }
+        $rows[] = array('label' => $label, 'value' => resumeLibraryCleanDetailValue($value));
     }
 
     return $rows;
+}
+
+function resumeLibraryNormalizeText($value)
+{
+    $value = strtolower(trim((string) $value));
+    $value = preg_replace('/[^a-z0-9.]+/', ' ', $value);
+    return trim((string) preg_replace('/\s+/', ' ', $value));
+}
+
+function resumeLibraryFindOptionIdInText($options, $text)
+{
+    $normalizedText = ' ' . resumeLibraryNormalizeText($text) . ' ';
+    foreach ((array) $options as $option) {
+        if (empty($option['id']) || empty($option['name'])) {
+            continue;
+        }
+        $name = resumeLibraryNormalizeText($option['name']);
+        if ($name !== '' && strpos($normalizedText, ' ' . $name . ' ') !== false) {
+            return (int) $option['id'];
+        }
+    }
+
+    return 0;
+}
+
+function resumeLibraryExtractAiKeywords($aiQuery)
+{
+    $knownSkills = array(
+        'SEO' => array('seo', 'search engine optimization', 'search engine optimisation'),
+        'Google Ads' => array('google ads', 'adwords', 'paid search'),
+        'Meta Ads' => array('meta ads', 'facebook ads', 'instagram ads'),
+        'Social Media' => array('social media'),
+        'Content Writing' => array('content writing', 'content writer'),
+        'Copywriting' => array('copywriting', 'copywriter'),
+        'Graphic Design' => array('graphic design', 'designer'),
+        'Video Editing' => array('video editing', 'video editor'),
+        'WordPress' => array('wordpress'),
+        'PHP' => array('php'),
+        'Laravel' => array('laravel'),
+        'MySQL' => array('mysql'),
+        'JavaScript' => array('javascript', 'js'),
+        'React' => array('react'),
+        'HR' => array('hr', 'recruitment', 'recruiter')
+    );
+
+    $text = resumeLibraryNormalizeText($aiQuery);
+    $keywords = array();
+    foreach ($knownSkills as $label => $needles) {
+        foreach ($needles as $needle) {
+            if (strpos(' ' . $text . ' ', ' ' . resumeLibraryNormalizeText($needle) . ' ') !== false) {
+                $keywords[$label] = true;
+                break;
+            }
+        }
+    }
+
+    return array_keys($keywords);
+}
+
+function resumeLibraryExtractNumberNear($text, $patterns)
+{
+    foreach ((array) $patterns as $pattern) {
+        if (preg_match($pattern, $text, $matches)) {
+            return isset($matches[1]) ? $matches[1] : '';
+        }
+    }
+
+    return '';
+}
+
+function resumeLibraryDeriveFiltersFromAiQuery($aiQuery, $filters, $roleOptions, $statusOptions, $sourceOptions)
+{
+    $aiQuery = trim((string) $aiQuery);
+    $derived = $filters;
+    $derived['keywords'] = array();
+    $derived['city'] = isset($derived['city']) ? trim((string) $derived['city']) : '';
+    $derived['relocate'] = isset($derived['relocate']) ? trim((string) $derived['relocate']) : '';
+    $derived['current_ctc'] = isset($derived['current_ctc']) ? trim((string) $derived['current_ctc']) : '';
+    $derived['expected_ctc'] = isset($derived['expected_ctc']) ? trim((string) $derived['expected_ctc']) : '';
+    $derived['notice_period'] = isset($derived['notice_period']) ? trim((string) $derived['notice_period']) : '';
+    $derived['interval'] = isset($derived['interval']) ? trim((string) $derived['interval']) : '';
+
+    if ($aiQuery === '') {
+        return $derived;
+    }
+
+    $text = resumeLibraryNormalizeText($aiQuery);
+    $keywords = resumeLibraryExtractAiKeywords($aiQuery);
+    if (!empty($keywords)) {
+        $derived['keywords'] = $keywords;
+        if (trim((string) $derived['q']) === '') {
+            $derived['q'] = $keywords[0];
+        }
+    }
+
+    if ((int) $derived['role'] <= 0) {
+        $derived['role'] = resumeLibraryFindOptionIdInText($roleOptions, $aiQuery);
+    }
+    if ((int) $derived['lead_status'] <= 0) {
+        $derived['lead_status'] = resumeLibraryFindOptionIdInText($statusOptions, $aiQuery);
+    }
+    if ((int) $derived['source'] <= 0) {
+        $derived['source'] = resumeLibraryFindOptionIdInText($sourceOptions, $aiQuery);
+    }
+
+    if (trim((string) $derived['experience']) === '') {
+        $experience = resumeLibraryExtractNumberNear($text, array(
+            '/(\d+(?:\.\d+)?)\s*(?:to|-)\s*\d+(?:\.\d+)?\s*(?:years|year|yrs|yr)/',
+            '/(?:minimum|min|at least|above|over|more than|greater than)\s*(\d+(?:\.\d+)?)\s*(?:years|year|yrs|yr)/',
+            '/(\d+(?:\.\d+)?)\s*\+?\s*(?:years|year|yrs|yr)/',
+            '/(?:experience|exp)\s*(?:of|:)?\s*(\d+(?:\.\d+)?)/'
+        ));
+        if ($experience !== '') {
+            $derived['experience'] = $experience;
+        }
+    }
+
+    $currentCtc = resumeLibraryExtractNumberNear($text, array(
+        '/(?:current ctc|current salary|present ctc|present salary)\s*(?:below|under|upto|up to|less than|<=|:)?\s*(\d+(?:\.\d+)?\s*(?:lpa|lakh|lakhs|lac|lacs|k)?)/',
+        '/(?:below|under|upto|up to|less than)\s*(\d+(?:\.\d+)?\s*(?:lpa|lakh|lakhs|lac|lacs|k)?)\s*(?:current ctc|current salary|ctc)/'
+    ));
+    if ($currentCtc !== '') {
+        $derived['current_ctc'] = $currentCtc;
+    }
+
+    $expectedCtc = resumeLibraryExtractNumberNear($text, array(
+        '/(?:expected ctc|expected salary|expectation)\s*(?:below|under|upto|up to|less than|<=|:)?\s*(\d+(?:\.\d+)?\s*(?:lpa|lakh|lakhs|lac|lacs|k)?)/',
+        '/(?:below|under|upto|up to|less than)\s*(\d+(?:\.\d+)?\s*(?:lpa|lakh|lakhs|lac|lacs|k)?)\s*(?:expected ctc|expected salary)/'
+    ));
+    if ($expectedCtc !== '') {
+        $derived['expected_ctc'] = $expectedCtc;
+    }
+
+    if (strpos($text, 'immediate') !== false || strpos($text, 'immediate joiner') !== false) {
+        $derived['notice_period'] = '0';
+    } else {
+        $notice = resumeLibraryExtractNumberNear($text, array(
+            '/(\d+)\s*(?:days|day)\s*(?:notice|np|join)/',
+            '/(?:notice|np|join)\s*(?:period|in|within|:)?\s*(\d+)\s*(?:days|day)?/'
+        ));
+        if ($notice !== '') {
+            $derived['notice_period'] = $notice;
+        }
+    }
+
+    foreach (array('mumbai', 'thane', 'navi mumbai', 'pune', 'delhi', 'gurgaon', 'noida', 'bangalore', 'bengaluru', 'hyderabad', 'chennai', 'kolkata', 'ahmedabad') as $city) {
+        if (strpos(' ' . $text . ' ', ' ' . $city . ' ') !== false) {
+            $derived['city'] = ucwords($city);
+            break;
+        }
+    }
+
+    if (strpos($text, 'not willing to relocate') !== false || strpos($text, 'no relocate') !== false) {
+        $derived['relocate'] = 'No';
+    } elseif (strpos($text, 'willing to relocate') !== false || strpos($text, 'relocate') !== false) {
+        $derived['relocate'] = 'Yes';
+    }
+
+    if ($derived['interval'] === '') {
+        if (strpos($text, 'last 7 days') !== false || strpos($text, 'past 7 days') !== false || strpos($text, 'this week') !== false) {
+            $derived['interval'] = 'last-seven';
+        } elseif (strpos($text, 'last 30 days') !== false || strpos($text, 'past 30 days') !== false || strpos($text, 'this month') !== false) {
+            $derived['interval'] = 'last-thirty';
+        } elseif (strpos($text, 'last 3 month') !== false || strpos($text, 'last three month') !== false || strpos($text, 'recent applications') !== false || strpos($text, 'recently applied') !== false) {
+            $derived['interval'] = 'last-month';
+        }
+    }
+
+    return $derived;
 }
 
 function resumeLibraryUrl($overrides = array())
@@ -132,7 +314,13 @@ function resumeLibraryHasActiveFilters($filters)
         || (int) $filters['role'] > 0
         || trim((string) $filters['experience']) !== ''
         || (int) $filters['lead_status'] > 0
-        || (int) $filters['source'] > 0;
+        || (int) $filters['source'] > 0
+        || trim((string) $filters['city']) !== ''
+        || trim((string) $filters['relocate']) !== ''
+        || trim((string) $filters['current_ctc']) !== ''
+        || trim((string) $filters['expected_ctc']) !== ''
+        || trim((string) $filters['notice_period']) !== ''
+        || trim((string) $filters['interval']) !== '';
 }
 
 function resumeLibraryBuildAiHiringBrief($filters, $aiQuery = '')
@@ -146,6 +334,12 @@ function resumeLibraryBuildAiHiringBrief($filters, $aiQuery = '')
         $brief .= "\nExperience filter: " . ($filters['experience'] !== '' ? $filters['experience'] : 'none');
         $brief .= "\nLead status ID: " . (int) $filters['lead_status'];
         $brief .= "\nSource filter ID: " . (int) $filters['source'];
+        $brief .= "\nCity filter: " . (!empty($filters['city']) ? $filters['city'] : 'none');
+        $brief .= "\nRelocation filter: " . (!empty($filters['relocate']) ? $filters['relocate'] : 'none');
+        $brief .= "\nCurrent CTC filter: " . (!empty($filters['current_ctc']) ? $filters['current_ctc'] : 'none');
+        $brief .= "\nExpected CTC filter: " . (!empty($filters['expected_ctc']) ? $filters['expected_ctc'] : 'none');
+        $brief .= "\nNotice period filter: " . (!empty($filters['notice_period']) ? $filters['notice_period'] : 'none');
+        $brief .= "\nDate added filter: " . (!empty($filters['interval']) ? $filters['interval'] : 'none');
         $brief .= "\n\nTask: Interpret the recruiter request, find the strongest matching candidates from the provided resumes, and explain why they match. Use resume text, skills, experience, and notice period as evidence.";
         return $brief;
     }
@@ -155,6 +349,12 @@ function resumeLibraryBuildAiHiringBrief($filters, $aiQuery = '')
     $brief .= "\nExperience filter: " . ($filters['experience'] !== '' ? $filters['experience'] : 'none');
     $brief .= "\nLead status ID: " . (int) $filters['lead_status'];
     $brief .= "\nSource filter ID: " . (int) $filters['source'];
+    $brief .= "\nCity filter: " . (!empty($filters['city']) ? $filters['city'] : 'none');
+    $brief .= "\nRelocation filter: " . (!empty($filters['relocate']) ? $filters['relocate'] : 'none');
+    $brief .= "\nCurrent CTC filter: " . (!empty($filters['current_ctc']) ? $filters['current_ctc'] : 'none');
+    $brief .= "\nExpected CTC filter: " . (!empty($filters['expected_ctc']) ? $filters['expected_ctc'] : 'none');
+    $brief .= "\nNotice period filter: " . (!empty($filters['notice_period']) ? $filters['notice_period'] : 'none');
+    $brief .= "\nDate added filter: " . (!empty($filters['interval']) ? $filters['interval'] : 'none');
     $brief .= "\nTask: Review the top search results and explain fit for this search.";
 
     return $brief;
@@ -170,9 +370,19 @@ if ($requestMethod === 'POST' && $action !== '') {
             'role' => isset($_POST['role']) ? (int) $_POST['role'] : 0,
             'experience' => isset($_POST['experience']) ? trim((string) $_POST['experience']) : '',
             'lead_status' => isset($_POST['lead_status']) ? (int) $_POST['lead_status'] : 0,
-            'source' => isset($_POST['source']) ? (int) $_POST['source'] : 0
+            'source' => isset($_POST['source']) ? (int) $_POST['source'] : 0,
+            'city' => isset($_POST['city']) ? trim((string) $_POST['city']) : '',
+            'relocate' => isset($_POST['relocate']) ? trim((string) $_POST['relocate']) : '',
+            'current_ctc' => isset($_POST['current_ctc']) ? trim((string) $_POST['current_ctc']) : '',
+            'expected_ctc' => isset($_POST['expected_ctc']) ? trim((string) $_POST['expected_ctc']) : '',
+            'notice_period' => isset($_POST['notice_period']) ? trim((string) $_POST['notice_period']) : '',
+            'interval' => isset($_POST['interval']) ? trim((string) $_POST['interval']) : ''
         );
         $aiQuery = isset($_POST['ai_query']) ? trim((string) $_POST['ai_query']) : '';
+        $debugRoleOptions = fetchResumeRoleOptions($connect);
+        $debugStatusOptions = fetchResumeLeadStatusOptions($connect);
+        $debugSourceOptions = fetchResumeSourceOptions($connect);
+        $effectiveFilters = resumeLibraryDeriveFiltersFromAiQuery($aiQuery, $filters, $debugRoleOptions, $debugStatusOptions, $debugSourceOptions);
 
         if ($aiQuery === '' && !resumeLibraryHasActiveFilters($filters)) {
             resumeLibraryJson(array(
@@ -181,43 +391,25 @@ if ($requestMethod === 'POST' && $action !== '') {
             ));
         }
 
-        $hiringBrief = resumeLibraryBuildAiHiringBrief($filters, $aiQuery);
+        $hiringBrief = resumeLibraryBuildAiHiringBrief($effectiveFilters, $aiQuery);
 
         $uiResultLimit = 10;
         $aiBatchLimit = 10;
-        $candidateResult = fetchResumeSearchResults($connect, array(
-            'q' => $filters['q'],
-            'role' => $filters['role'],
-            'experience' => $filters['experience'],
-            'lead_status' => $filters['lead_status'],
-            'source' => $filters['source'],
-            'status' => 'completed'
-        ), 1, $uiResultLimit);
-
-        if (empty($candidateResult['rows'])) {
-            resumeLibraryJson(array(
-                'ok' => false,
-                'message' => 'No completed resumes match the current search filters.'
-            ));
-        }
-
-        $aiInputRows = array_slice($candidateResult['rows'], 0, $aiBatchLimit);
-        $aiFilters = $filters;
-        if ($aiQuery !== '') {
-            $aiFilters['ai_query'] = $aiQuery;
-        }
-        $aiResult = requestGeminiResumeInsights($hiringBrief, $aiInputRows, $aiFilters);
-        $debugRoleOptions = fetchResumeRoleOptions($connect);
-        $debugStatusOptions = fetchResumeLeadStatusOptions($connect);
-        $debugSourceOptions = fetchResumeSourceOptions($connect);
-        $aiResult['ai_debug'] = array(
+        $aiDebug = array(
             'recruiter_query' => $aiQuery !== '' ? $aiQuery : 'Not provided',
             'filters_used' => array(
-                'Keyword' => $filters['q'] !== '' ? $filters['q'] : 'Any keyword',
-                'Role' => resumeLibraryOptionName($debugRoleOptions, $filters['role'], 'Any role'),
-                'Experience' => $filters['experience'] !== '' ? $filters['experience'] : 'Any experience',
-                'Status' => resumeLibraryOptionName($debugStatusOptions, $filters['lead_status'], 'Any status'),
-                'Source' => resumeLibraryOptionName($debugSourceOptions, $filters['source'], 'Any source'),
+                'Keyword' => $effectiveFilters['q'] !== '' ? $effectiveFilters['q'] : 'Any keyword',
+                'AI keywords' => !empty($effectiveFilters['keywords']) ? implode(', ', $effectiveFilters['keywords']) : 'Any skill keyword',
+                'Role' => resumeLibraryOptionName($debugRoleOptions, $effectiveFilters['role'], 'Any role'),
+                'Experience' => $effectiveFilters['experience'] !== '' ? $effectiveFilters['experience'] . '+ years' : 'Any experience',
+                'Status' => resumeLibraryOptionName($debugStatusOptions, $effectiveFilters['lead_status'], 'Any status'),
+                'Source' => resumeLibraryOptionName($debugSourceOptions, $effectiveFilters['source'], 'Any source'),
+                'City' => !empty($effectiveFilters['city']) ? $effectiveFilters['city'] : 'Any city',
+                'Relocate' => !empty($effectiveFilters['relocate']) ? $effectiveFilters['relocate'] : 'Any',
+                'Current CTC' => !empty($effectiveFilters['current_ctc']) ? '<= ' . $effectiveFilters['current_ctc'] : 'Any current CTC',
+                'Expected CTC' => !empty($effectiveFilters['expected_ctc']) ? '<= ' . $effectiveFilters['expected_ctc'] : 'Any expected CTC',
+                'Notice Period' => !empty($effectiveFilters['notice_period']) ? $effectiveFilters['notice_period'] : 'Any notice period',
+                'Date Added' => resumeLibraryIntervalLabel(isset($effectiveFilters['interval']) ? $effectiveFilters['interval'] : ''),
                 'Resume status' => 'Completed resumes only'
             ),
             'candidate_retrieval' => array(
@@ -226,18 +418,52 @@ if ($requestMethod === 'POST' && $action !== '') {
                 'result_limit' => $uiResultLimit,
                 'ai_batch_limit' => $aiBatchLimit,
                 'sort_order' => 'relevance_score DESC, application date DESC, resume updated DESC',
-                'note' => 'AI scores the candidates returned by these filters; it does not directly run SQL.'
+                'note' => 'The typed AI query is converted into these CRM filters first; then SQL uses those values in the WHERE clause before Gemini scores the returned resumes.'
             ),
             'hiring_brief_sent_to_ai' => $hiringBrief,
-            'candidates_found_before_ai' => isset($candidateResult['total']) ? (int) $candidateResult['total'] : count($candidateResult['rows']),
-            'candidates_sent_to_ai' => array_map(function ($candidateRow) {
-                return array(
-                    'lead_id' => isset($candidateRow['lead_id']) ? (int) $candidateRow['lead_id'] : 0,
-                    'name' => isset($candidateRow['lead_name']) ? (string) $candidateRow['lead_name'] : '',
-                    'resume' => isset($candidateRow['original_resume_name']) ? (string) $candidateRow['original_resume_name'] : ''
-                );
-            }, $aiInputRows)
+            'candidates_found_before_ai' => 0,
+            'candidates_sent_to_ai' => array()
         );
+        $candidateResult = fetchResumeSearchResults($connect, array(
+            'q' => $effectiveFilters['q'],
+            'keywords' => isset($effectiveFilters['keywords']) ? $effectiveFilters['keywords'] : array(),
+            'role' => $effectiveFilters['role'],
+            'experience' => $effectiveFilters['experience'],
+            'lead_status' => $effectiveFilters['lead_status'],
+            'source' => $effectiveFilters['source'],
+            'city' => isset($effectiveFilters['city']) ? $effectiveFilters['city'] : '',
+            'relocate' => isset($effectiveFilters['relocate']) ? $effectiveFilters['relocate'] : '',
+            'current_ctc' => isset($effectiveFilters['current_ctc']) ? $effectiveFilters['current_ctc'] : '',
+            'expected_ctc' => isset($effectiveFilters['expected_ctc']) ? $effectiveFilters['expected_ctc'] : '',
+            'notice_period' => isset($effectiveFilters['notice_period']) ? $effectiveFilters['notice_period'] : '',
+            'interval' => isset($effectiveFilters['interval']) ? $effectiveFilters['interval'] : '',
+            'status' => 'completed'
+        ), 1, $uiResultLimit);
+
+        if (empty($candidateResult['rows'])) {
+            $aiDebug['candidates_found_before_ai'] = isset($candidateResult['total']) ? (int) $candidateResult['total'] : 0;
+            resumeLibraryJson(array(
+                'ok' => false,
+                'message' => 'No completed resumes match the AI-filled filters.',
+                'ai_debug' => $aiDebug
+            ));
+        }
+
+        $aiInputRows = array_slice($candidateResult['rows'], 0, $aiBatchLimit);
+        $aiFilters = $effectiveFilters;
+        if ($aiQuery !== '') {
+            $aiFilters['ai_query'] = $aiQuery;
+        }
+        $aiResult = requestGeminiResumeInsights($hiringBrief, $aiInputRows, $aiFilters);
+        $aiDebug['candidates_found_before_ai'] = isset($candidateResult['total']) ? (int) $candidateResult['total'] : count($candidateResult['rows']);
+        $aiDebug['candidates_sent_to_ai'] = array_map(function ($candidateRow) {
+            return array(
+                'lead_id' => isset($candidateRow['lead_id']) ? (int) $candidateRow['lead_id'] : 0,
+                'name' => isset($candidateRow['lead_name']) ? (string) $candidateRow['lead_name'] : '',
+                'resume' => isset($candidateRow['original_resume_name']) ? (string) $candidateRow['original_resume_name'] : ''
+            );
+        }, $aiInputRows);
+        $aiResult['ai_debug'] = $aiDebug;
         $candidateRowsForUi = array();
         foreach ($candidateResult['rows'] as $candidateRow) {
             $candidateRow['role_text'] = trim((string) getroletext((string) $candidateRow['roles']));
@@ -294,7 +520,13 @@ $filters = array(
     'role' => isset($_GET['role']) ? (int) $_GET['role'] : 0,
     'experience' => isset($_GET['experience']) ? trim((string) $_GET['experience']) : '',
     'lead_status' => isset($_GET['lead_status']) ? (int) $_GET['lead_status'] : 0,
-    'source' => isset($_GET['source']) ? (int) $_GET['source'] : 0
+    'source' => isset($_GET['source']) ? (int) $_GET['source'] : 0,
+    'city' => isset($_GET['city']) ? trim((string) $_GET['city']) : '',
+    'relocate' => isset($_GET['relocate']) ? trim((string) $_GET['relocate']) : '',
+    'current_ctc' => isset($_GET['current_ctc']) ? trim((string) $_GET['current_ctc']) : '',
+    'expected_ctc' => isset($_GET['expected_ctc']) ? trim((string) $_GET['expected_ctc']) : '',
+    'notice_period' => isset($_GET['notice_period']) ? trim((string) $_GET['notice_period']) : '',
+    'interval' => isset($_GET['interval']) ? trim((string) $_GET['interval']) : ''
 );
 
 $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
@@ -321,6 +553,12 @@ if ($hasActiveFilters) {
         'experience' => $filters['experience'],
         'lead_status' => $filters['lead_status'],
         'source' => $filters['source'],
+        'city' => $filters['city'],
+        'relocate' => $filters['relocate'],
+        'current_ctc' => $filters['current_ctc'],
+        'expected_ctc' => $filters['expected_ctc'],
+        'notice_period' => $filters['notice_period'],
+        'interval' => $filters['interval'],
         'status' => 'completed'
     ), $page, $perPage);
 }
@@ -703,6 +941,41 @@ if ($hasActiveFilters) {
                     </select>
                 </div>
             </div>
+            <div class="row" style="margin-top:14px;">
+                <div class="col-md-2 col-sm-6">
+                    <label for="city">City</label>
+                    <input type="text" id="city" name="city" class="form-control input-lg" value="<?php echo resumeLibraryEsc($filters['city']); ?>" placeholder="Mumbai, Pune">
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label for="relocate">Willing to Relocate</label>
+                    <select id="relocate" name="relocate" class="form-control input-lg">
+                        <option value="">Please select</option>
+                        <option value="Yes"<?php echo $filters['relocate'] === 'Yes' ? ' selected' : ''; ?>>Yes</option>
+                        <option value="No"<?php echo $filters['relocate'] === 'No' ? ' selected' : ''; ?>>No</option>
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label for="current_ctc">Current CTC</label>
+                    <input type="text" id="current_ctc" name="current_ctc" class="form-control input-lg" value="<?php echo resumeLibraryEsc($filters['current_ctc']); ?>" placeholder="250000 or 2.5L">
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label for="expected_ctc">Expected CTC</label>
+                    <input type="text" id="expected_ctc" name="expected_ctc" class="form-control input-lg" value="<?php echo resumeLibraryEsc($filters['expected_ctc']); ?>" placeholder="300000 or 3L">
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label for="notice_period">Notice Period</label>
+                    <input type="text" id="notice_period" name="notice_period" class="form-control input-lg" value="<?php echo resumeLibraryEsc($filters['notice_period']); ?>" placeholder="0, 15, 30">
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label for="interval">Date Added</label>
+                    <select id="interval" name="interval" class="form-control input-lg">
+                        <option value="">Please select</option>
+                        <option value="last-seven"<?php echo $filters['interval'] === 'last-seven' ? ' selected' : ''; ?>>Last 7 days</option>
+                        <option value="last-thirty"<?php echo $filters['interval'] === 'last-thirty' ? ' selected' : ''; ?>>Last 30 days</option>
+                        <option value="last-month"<?php echo $filters['interval'] === 'last-month' ? ' selected' : ''; ?>>Last 3 month</option>
+                    </select>
+                </div>
+            </div>
             <div class="ai-query-box">
                 <label for="ai_query">AI recruiter query</label>
                 <textarea id="ai_query" class="form-control input-lg" placeholder="Example: I want an immediate joiner for SEO with 2 to 4 years experience, strong on-page and off-page skills, and preferably Mumbai based."></textarea>
@@ -768,10 +1041,6 @@ if ($hasActiveFilters) {
                     $applyDateLabel = formatResumeApplyDate((string) $row['dateadded']);
                     $conversionInsight = buildResumeConversionInsight((string) $row['dateadded'], isset($row['relevance_score']) ? (int) $row['relevance_score'] : 0);
                     $skills = array_filter(array_map('trim', explode(',', (string) $row['extracted_skills'])));
-                    $previewText = trim((string) $row['raw_text']);
-                    if (strlen($previewText) > 340) {
-                        $previewText = substr($previewText, 0, 340) . '...';
-                    }
                     ?>
                     <div class="candidate-card"
                          data-lead-id="<?php echo (int) $row['lead_id']; ?>"
@@ -819,10 +1088,6 @@ if ($hasActiveFilters) {
                                 <?php } else { ?>
                                     <span class="text-muted">No extracted skills yet</span>
                                 <?php } ?>
-                            </div>
-
-                            <div class="resume-preview">
-                                <?php echo nl2br(resumeLibraryEsc($previewText !== '' ? $previewText : 'Preview not available yet.')); ?>
                             </div>
 
                             <div style="margin-top:14px;">
@@ -891,7 +1156,7 @@ $(function () {
 
     $('#runAiInsightsBtn').on('click', function () {
         var aiQuery = $('#ai_query').val().trim();
-        if (!aiQuery && !$('#q').val().trim() && (!$('#role').val() || $('#role').val() === '0') && !$('#experience').val().trim() && (!$('#lead_status').val() || $('#lead_status').val() === '0') && (!$('#source').val() || $('#source').val() === '0')) {
+        if (!aiQuery && !$('#q').val().trim() && (!$('#role').val() || $('#role').val() === '0') && !$('#experience').val().trim() && (!$('#lead_status').val() || $('#lead_status').val() === '0') && (!$('#source').val() || $('#source').val() === '0') && !$('#city').val().trim() && !$('#relocate').val() && !$('#current_ctc').val().trim() && !$('#expected_ctc').val().trim() && !$('#notice_period').val().trim() && !$('#interval').val()) {
             $('#aiInsightMessage').text('Add an AI recruiter query or at least one filter before running AI Search.');
             return;
         }
@@ -924,6 +1189,12 @@ $(function () {
             experience: $('#experience').val(),
             lead_status: $('#lead_status').val(),
             source: $('#source').val(),
+            city: $('#city').val(),
+            relocate: $('#relocate').val(),
+            current_ctc: $('#current_ctc').val(),
+            expected_ctc: $('#expected_ctc').val(),
+            notice_period: $('#notice_period').val(),
+            interval: $('#interval').val(),
             ai_query: aiQuery
         }, function (response) {
             stopAiProgressAnimation();
@@ -1040,7 +1311,8 @@ $(function () {
         $('#modalCandidateAiInsight').html('<strong>Interview readiness score:</strong> ' + escapeHtml(String(aiPayload.interview_readiness_score || 'Not available')) + '<br><strong>Interview focus:</strong> ' + escapeHtml(aiPayload.interview_focus || 'Not available') + '<br><strong>Applied date:</strong> ' + escapeHtml(applyDate) + '<br><strong>Conversion likelihood:</strong> ' + escapeHtml(conversionLabel) + '<br><strong>Why:</strong> ' + escapeHtml(conversionReason));
         $('#modalCandidateQuestions').html('<strong>Recommended interview questions:</strong><br>' + renderList(aiPayload.recommended_interview_questions));
         $('#modalCandidateRisks').html('<strong>Risk indicators:</strong><br>' + renderList(aiPayload.risk_indicators));
-        $('#modalCandidateSystem').html('<strong>System data:</strong><br>' + $card.find('.candidate-meta').html() + '<br><br><strong>Resume preview:</strong><br>' + $card.find('.resume-preview').html());
+        var detailGridHtml = $card.find('.candidate-detail-grid').prop('outerHTML') || '';
+        $('#modalCandidateSystem').html('<strong>System data:</strong><br>' + $card.find('.candidate-meta').html() + '<br>' + detailGridHtml);
         if (resumeUrl !== '' && fileExtension === 'pdf') {
             $('#modalCandidatePdf').html('<strong>Resume PDF:</strong><div style="margin-top:10px; border:1px solid #dfe5ee; border-radius:8px; overflow:hidden;"><iframe src="' + escapeHtml(resumeUrl) + '" style="width:100%; height:520px; border:0;"></iframe></div>');
         } else if (resumeUrl !== '') {
@@ -1115,11 +1387,6 @@ $(function () {
             var applyDateLabel = row.formatted_apply_date && row.formatted_apply_date.trim() !== '' ? row.formatted_apply_date : 'Not available';
             var conversionLabel = row.conversion_insight && row.conversion_insight.label ? row.conversion_insight.label : 'Needs review';
             var conversionReason = row.conversion_insight && row.conversion_insight.reason ? row.conversion_insight.reason : 'Manual review recommended.';
-            var previewText = row.raw_text || 'Preview not available yet.';
-            if (previewText.length > 340) {
-                previewText = previewText.substring(0, 340) + '...';
-            }
-
             var skillsHtml = '<span class="text-muted">No extracted skills yet</span>';
             if (row.extracted_skills && row.extracted_skills.trim() !== '') {
                 var parts = [];
@@ -1145,7 +1412,6 @@ $(function () {
             html += '<div class="card-score-row"><div><strong>AI Score</strong> <span class="label label-success card-ai-score">Pending</span></div><button type="button" class="btn btn-xs btn-info card-open-modal">View Details</button></div>';
             html += '<div class="card-system-data">';
             html += '<div class="skills-wrap">' + skillsHtml + '</div>';
-            html += '<div class="resume-preview">' + escapeHtml(previewText).replace(/\n/g, '<br>') + '</div>';
             html += '<div style="margin-top:14px;"><a href="view_resume.php?file=' + encodeURIComponent(row.original_resume_name || '') + '" target="_blank" class="btn btn-success btn-sm"><i class="fa fa-eye"></i> Open Resume</a> <a href="candidates.php" class="btn btn-default btn-sm"><i class="fa fa-users"></i> Candidates Page</a></div>';
             html += '</div>';
             html += '<div class="card-ai-insight"><strong>AI Insight</strong><div class="card-ai-why"></div><div class="card-ai-focus"></div></div>';
@@ -1169,27 +1435,22 @@ $(function () {
             ['Candidate Skills', row.skillset || '']
         ];
         var html = '<div class="candidate-detail-grid">';
-        var visibleCount = 0;
         items.forEach(function (item) {
             var value = cleanDetailValue(item[1]);
-            if (!value) {
-                return;
-            }
-            visibleCount++;
             html += '<div><strong>' + escapeHtml(item[0]) + ':</strong> ' + escapeHtml(value) + '</div>';
         });
         html += '</div>';
-        return visibleCount ? html : '';
+        return html;
     }
 
     function cleanDetailValue(value) {
         value = String(value || '').trim();
         if (!value) {
-            return '';
+            return 'Not provided';
         }
         var lowered = value.toLowerCase();
         if (lowered === 'na' || lowered === 'n/a' || lowered === 'none' || lowered === 'null' || lowered === '-') {
-            return '';
+            return 'Not provided';
         }
         return value;
     }
