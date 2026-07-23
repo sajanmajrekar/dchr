@@ -154,6 +154,27 @@ if ($requestMethod === 'POST' && $action !== '') {
             $aiFilters['ai_query'] = $aiQuery;
         }
         $aiResult = requestGeminiResumeInsights($hiringBrief, $aiInputRows, $aiFilters);
+        $aiResult['ai_debug'] = array(
+            'recruiter_query' => $aiQuery !== '' ? $aiQuery : 'Not provided',
+            'structured_filters_sent' => $filters,
+            'candidate_retrieval' => array(
+                'source' => 'resume_documents joined with tblleads',
+                'status_filter' => 'completed resumes only',
+                'result_limit' => $uiResultLimit,
+                'ai_batch_limit' => $aiBatchLimit,
+                'sort_order' => 'relevance_score DESC, application date DESC, resume updated DESC',
+                'note' => 'AI scores the candidates returned by these filters; it does not directly run SQL.'
+            ),
+            'hiring_brief_sent_to_ai' => $hiringBrief,
+            'candidates_found_before_ai' => isset($candidateResult['total']) ? (int) $candidateResult['total'] : count($candidateResult['rows']),
+            'candidates_sent_to_ai' => array_map(function ($candidateRow) {
+                return array(
+                    'lead_id' => isset($candidateRow['lead_id']) ? (int) $candidateRow['lead_id'] : 0,
+                    'name' => isset($candidateRow['lead_name']) ? (string) $candidateRow['lead_name'] : '',
+                    'resume' => isset($candidateRow['original_resume_name']) ? (string) $candidateRow['original_resume_name'] : ''
+                );
+            }, $aiInputRows)
+        );
         $candidateRowsForUi = array();
         foreach ($candidateResult['rows'] as $candidateRow) {
             $candidateRow['role_text'] = trim((string) getroletext((string) $candidateRow['roles']));
@@ -455,6 +476,59 @@ if ($hasActiveFilters) {
         white-space: pre-wrap;
         word-break: break-word;
     }
+    .ai-log-panel {
+        display: none;
+        margin-bottom: 18px;
+        background: #fffdf6;
+        border: 1px solid #f3e0ae;
+        border-radius: 10px;
+        padding: 18px;
+    }
+    .ai-log-panel.is-visible {
+        display: block;
+    }
+    .ai-log-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+    }
+    .ai-log-item {
+        background: #fff;
+        border: 1px solid #f1e4c4;
+        border-radius: 8px;
+        padding: 12px;
+        line-height: 1.6;
+        word-break: break-word;
+    }
+    .ai-log-pre {
+        max-height: 220px;
+        overflow: auto;
+        white-space: pre-wrap;
+        margin: 8px 0 0;
+        color: #4d5768;
+        background: #fffaf0;
+        border: 1px solid #f1e4c4;
+        border-radius: 8px;
+        padding: 10px;
+    }
+    .candidate-detail-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px 12px;
+        margin: 12px 0;
+        padding: 12px;
+        background: #fff;
+        border: 1px solid #e9eef4;
+        border-radius: 10px;
+    }
+    .candidate-detail-grid div {
+        color: #5c6677;
+        line-height: 1.5;
+    }
+    .candidate-detail-grid strong {
+        color: #172033;
+    }
     .ai-query-box {
         margin-top: 16px;
         padding: 16px;
@@ -483,6 +557,10 @@ if ($hasActiveFilters) {
             grid-template-columns: 1fr;
         }
         .ai-summary-grid {
+            grid-template-columns: 1fr;
+        }
+        .ai-log-grid,
+        .candidate-detail-grid {
             grid-template-columns: 1fr;
         }
     }
@@ -585,6 +663,11 @@ if ($hasActiveFilters) {
     <div class="resume-panel">
         <h3 class="side-title">Matching Candidates</h3>
         <p class="text-muted" style="margin-top:-4px;">Normal search shows the matches. AI Search takes the top 10 current results and writes insights directly into those same cards.</p>
+        <div id="aiLogPanel" class="ai-log-panel">
+            <h4 style="margin-top:0;">AI Search Log</h4>
+            <p class="text-muted" style="margin-bottom:0;">This shows what the system searched before Gemini scored the resumes. No API key or secret values are shown here.</p>
+            <div id="aiLogContent"></div>
+        </div>
         <div id="aiSummaryPanel" class="ai-summary-panel">
             <h4 style="margin-top:0;">AI Shortlist Summary</h4>
             <p id="aiSummaryText" class="text-muted" style="margin-bottom:10px;">Waiting for AI shortlist...</p>
@@ -643,6 +726,18 @@ if ($hasActiveFilters) {
                                     <strong>Role:</strong> <?php echo resumeLibraryEsc(trim((string) getroletext((string) $row['roles'])) !== '' ? trim((string) getroletext((string) $row['roles'])) : '-'); ?><br>
                                     <strong>Applied:</strong> <?php echo resumeLibraryEsc($applyDateLabel); ?><br>
                                     <strong>Conversion:</strong> <?php echo resumeLibraryEsc($conversionInsight['label']); ?>
+                                </div>
+                                <div class="candidate-detail-grid">
+                                    <div><strong>Status:</strong> <?php echo resumeLibraryEsc(!empty($row['lead_status_name']) ? $row['lead_status_name'] : '-'); ?></div>
+                                    <div><strong>Source:</strong> <?php echo resumeLibraryEsc(!empty($row['lead_source_name']) ? $row['lead_source_name'] : '-'); ?></div>
+                                    <div><strong>City:</strong> <?php echo resumeLibraryEsc(!empty($row['city']) ? $row['city'] : '-'); ?></div>
+                                    <div><strong>Relocate:</strong> <?php echo resumeLibraryEsc(!empty($row['willing_to_relocate']) ? $row['willing_to_relocate'] : '-'); ?></div>
+                                    <div><strong>Current CTC:</strong> <?php echo resumeLibraryEsc(!empty($row['csalary']) ? $row['csalary'] : '-'); ?></div>
+                                    <div><strong>Expected CTC:</strong> <?php echo resumeLibraryEsc(!empty($row['esalary']) ? $row['esalary'] : '-'); ?></div>
+                                    <div><strong>Notice:</strong> <?php echo resumeLibraryEsc(!empty($row['nperiod']) ? $row['nperiod'] : '-'); ?></div>
+                                    <div><strong>Qualification:</strong> <?php echo resumeLibraryEsc(!empty($row['qualification']) ? $row['qualification'] : '-'); ?></div>
+                                    <div><strong>Current Title:</strong> <?php echo resumeLibraryEsc(!empty($row['cjtitle']) ? $row['cjtitle'] : '-'); ?></div>
+                                    <div><strong>Employer:</strong> <?php echo resumeLibraryEsc(!empty($row['cemployer']) ? $row['cemployer'] : '-'); ?></div>
                                 </div>
                             </div>
                             <div class="experience-pill"><?php echo resumeLibraryEsc($experienceLabel); ?></div>
@@ -744,6 +839,8 @@ $(function () {
 
         $('#aiInsightMessage').text(aiQuery ? 'AI is reading resumes for your recruiter query...' : 'AI is analyzing the top 10 current search results...');
         $('#aiSummaryPanel').removeClass('is-visible');
+        $('#aiLogPanel').removeClass('is-visible');
+        $('#aiLogContent').html('');
         $('#aiSummaryText').text('Waiting for AI shortlist...');
         $('#aiTopFiveList').html('');
         $('#aiSkillsHeatmap').html('');
@@ -779,6 +876,9 @@ $(function () {
 
             if (!response.ok) {
                 $('#aiInsightMessage').text(response.message || 'Could not generate AI insights.');
+                if (response.ai_debug) {
+                    renderAiLog(response.ai_debug || {}, response.parsed || {});
+                }
                 updateAiProgress(100, 'AI search failed.');
                 if (!Array.isArray(response.candidate_rows) || !response.candidate_rows.length) {
                     $('#resumeEmptyState').show();
@@ -788,6 +888,7 @@ $(function () {
 
             $('#aiInsightMessage').text(response.message || 'Insights ready.');
             updateAiProgress(100, 'AI shortlist ready.');
+            renderAiLog(response.ai_debug || {}, response.parsed || {});
             renderAiSummary(response.parsed || {});
 
             var workingInsightMap = response.insight_map || {};
@@ -978,6 +1079,7 @@ $(function () {
             html += '<div>';
             html += '<div class="candidate-name">' + escapeHtml(row.lead_name || '') + '</div>';
             html += '<div class="candidate-meta"><strong>Email:</strong> ' + escapeHtml(candidateEmail) + '<br><strong>Phone:</strong> ' + escapeHtml(candidatePhone) + '<br><strong>Role:</strong> ' + escapeHtml(roleText) + '<br><strong>Applied:</strong> ' + escapeHtml(applyDateLabel) + '<br><strong>Conversion:</strong> ' + escapeHtml(conversionLabel) + '</div>';
+            html += renderCandidateDetailGrid(row);
             html += '</div>';
             html += '<div class="experience-pill">' + escapeHtml(experienceLabel) + '</div>';
             html += '</div>';
@@ -991,6 +1093,49 @@ $(function () {
             html += '</div>';
         });
         $('#candidateGrid').html(html);
+    }
+
+    function renderCandidateDetailGrid(row) {
+        var items = [
+            ['Status', row.lead_status_name || '-'],
+            ['Source', row.lead_source_name || '-'],
+            ['City', row.city || '-'],
+            ['Relocate', row.willing_to_relocate || '-'],
+            ['Current CTC', row.csalary || '-'],
+            ['Expected CTC', row.esalary || '-'],
+            ['Notice', row.nperiod || '-'],
+            ['Qualification', row.qualification || '-'],
+            ['Current Title', row.cjtitle || '-'],
+            ['Employer', row.cemployer || '-']
+        ];
+        var html = '<div class="candidate-detail-grid">';
+        items.forEach(function (item) {
+            html += '<div><strong>' + escapeHtml(item[0]) + ':</strong> ' + escapeHtml(String(item[1] || '-')) + '</div>';
+        });
+        html += '</div>';
+        return html;
+    }
+
+    function renderAiLog(debug, parsed) {
+        $('#aiLogPanel').addClass('is-visible');
+        var interpretedFilters = parsed && parsed.interpreted_filters ? parsed.interpreted_filters : {};
+        var searchStrategy = parsed && parsed.search_strategy ? parsed.search_strategy : 'Not returned by AI.';
+        var candidates = Array.isArray(debug.candidates_sent_to_ai) ? debug.candidates_sent_to_ai : [];
+        var candidateLines = candidates.length ? candidates.map(function (candidate) {
+            return '#' + escapeHtml(String(candidate.lead_id || '-')) + ' - ' + escapeHtml(candidate.name || 'Candidate') + ' (' + escapeHtml(candidate.resume || 'resume') + ')';
+        }).join('<br>') : '<span class="text-muted">No candidate list available.</span>';
+
+        var html = '<div class="ai-log-grid">';
+        html += '<div class="ai-log-item"><strong>Recruiter Query</strong><div>' + escapeHtml(debug.recruiter_query || 'Not provided') + '</div></div>';
+        html += '<div class="ai-log-item"><strong>Candidate Retrieval</strong><div>' + escapeHtml(debug.candidate_retrieval && debug.candidate_retrieval.note ? debug.candidate_retrieval.note : 'AI scores candidates returned by the visible filters.') + '</div></div>';
+        html += '<div class="ai-log-item"><strong>Structured Filters Sent</strong><pre class="ai-log-pre">' + escapeHtml(JSON.stringify(debug.structured_filters_sent || {}, null, 2)) + '</pre></div>';
+        html += '<div class="ai-log-item"><strong>AI Interpreted Filters</strong><pre class="ai-log-pre">' + escapeHtml(JSON.stringify(interpretedFilters, null, 2)) + '</pre></div>';
+        html += '<div class="ai-log-item"><strong>Search Strategy</strong><div class="ai-summary-copy">' + escapeHtml(typeof searchStrategy === 'string' ? searchStrategy : JSON.stringify(searchStrategy, null, 2)) + '</div></div>';
+        html += '<div class="ai-log-item"><strong>Candidates Sent To AI</strong><div class="ai-summary-copy">' + candidateLines + '</div></div>';
+        html += '<div class="ai-log-item"><strong>Counts</strong><div>Found before AI: ' + escapeHtml(String(debug.candidates_found_before_ai || 0)) + '<br>Sent to AI: ' + escapeHtml(String(candidates.length)) + '</div></div>';
+        html += '<div class="ai-log-item"><strong>Hiring Brief Sent</strong><pre class="ai-log-pre">' + escapeHtml(debug.hiring_brief_sent_to_ai || '') + '</pre></div>';
+        html += '</div>';
+        $('#aiLogContent').html(html);
     }
 
     function renderAiSummary(parsed) {
