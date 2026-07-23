@@ -1041,7 +1041,8 @@ if ($hasActiveFilters) {
                     $experienceLabel = formatDynamicExperienceLabel((string) $row['experiance'], (string) $row['dateadded']);
                     $applyDateLabel = formatResumeApplyDate((string) $row['dateadded']);
                     $conversionInsight = buildResumeConversionInsight((string) $row['dateadded'], isset($row['relevance_score']) ? (int) $row['relevance_score'] : 0);
-                    $skills = array_filter(array_map('trim', explode(',', (string) $row['extracted_skills'])));
+                    $skillsText = trim((string) $row['extracted_skills']) !== '' ? (string) $row['extracted_skills'] : (isset($row['skillset']) ? (string) $row['skillset'] : '');
+                    $skills = array_filter(array_map('trim', explode(',', $skillsText)));
                     ?>
                     <div class="candidate-card"
                          data-lead-id="<?php echo (int) $row['lead_id']; ?>"
@@ -1381,17 +1382,18 @@ $(function () {
     function renderCandidateCards(rows) {
         var html = '';
         rows.forEach(function (row) {
-            var candidateEmail = row.extracted_email && row.extracted_email.trim() !== '' ? row.extracted_email : (row.lead_email || '-');
-            var candidatePhone = row.extracted_phone && row.extracted_phone.trim() !== '' ? row.extracted_phone : (row.lead_phone || '-');
-            var roleText = row.role_text && row.role_text.trim() !== '' ? row.role_text : '-';
-            var experienceLabel = row.dynamic_experience_label && row.dynamic_experience_label.trim() !== '' ? row.dynamic_experience_label : (row.experiance && row.experiance.trim() !== '' ? row.experiance : 'Not available');
-            var applyDateLabel = row.formatted_apply_date && row.formatted_apply_date.trim() !== '' ? row.formatted_apply_date : 'Not available';
+            var candidateEmail = rowValue(row, 'extracted_email').trim() !== '' ? rowValue(row, 'extracted_email') : (rowValue(row, 'lead_email').trim() !== '' ? rowValue(row, 'lead_email') : '-');
+            var candidatePhone = rowValue(row, 'extracted_phone').trim() !== '' ? rowValue(row, 'extracted_phone') : (rowValue(row, 'lead_phone').trim() !== '' ? rowValue(row, 'lead_phone') : '-');
+            var roleText = rowValue(row, 'role_text').trim() !== '' ? rowValue(row, 'role_text') : '-';
+            var experienceLabel = rowValue(row, 'dynamic_experience_label').trim() !== '' ? rowValue(row, 'dynamic_experience_label') : (rowValue(row, 'experiance').trim() !== '' ? rowValue(row, 'experiance') : 'Not available');
+            var applyDateLabel = rowValue(row, 'formatted_apply_date').trim() !== '' ? rowValue(row, 'formatted_apply_date') : 'Not available';
             var conversionLabel = row.conversion_insight && row.conversion_insight.label ? row.conversion_insight.label : 'Needs review';
             var conversionReason = row.conversion_insight && row.conversion_insight.reason ? row.conversion_insight.reason : 'Manual review recommended.';
             var skillsHtml = '<span class="text-muted">No extracted skills yet</span>';
-            if (row.extracted_skills && row.extracted_skills.trim() !== '') {
+            var skillsText = rowValue(row, 'extracted_skills').trim() !== '' ? rowValue(row, 'extracted_skills') : rowValue(row, 'skillset');
+            if (skillsText.trim() !== '') {
                 var parts = [];
-                row.extracted_skills.split(',').forEach(function (skill, index) {
+                skillsText.split(',').forEach(function (skill, index) {
                     if (index < 10 && skill.trim() !== '') {
                         parts.push('<span class="label label-info">' + escapeHtml(skill.trim()) + '</span>');
                     }
@@ -1401,10 +1403,10 @@ $(function () {
                 }
             }
 
-            html += '<div class="candidate-card" data-lead-id="' + escapeHtml(String(row.lead_id || '')) + '" data-resume-url="view_resume.php?file=' + encodeURIComponent(row.original_resume_name || '') + '" data-file-extension="' + escapeHtml(String(row.file_extension || '')) + '" data-apply-date="' + escapeHtml(applyDateLabel) + '" data-conversion-label="' + escapeHtml(conversionLabel) + '" data-conversion-reason="' + escapeHtml(conversionReason) + '">';
+            html += '<div class="candidate-card" data-lead-id="' + escapeHtml(rowValue(row, 'lead_id')) + '" data-resume-url="view_resume.php?file=' + encodeURIComponent(rowValue(row, 'original_resume_name')) + '" data-file-extension="' + escapeHtml(rowValue(row, 'file_extension')) + '" data-apply-date="' + escapeHtml(applyDateLabel) + '" data-conversion-label="' + escapeHtml(conversionLabel) + '" data-conversion-reason="' + escapeHtml(conversionReason) + '">';
             html += '<div class="candidate-head">';
             html += '<div>';
-            html += '<div class="candidate-name">' + escapeHtml(row.lead_name || '') + '</div>';
+            html += '<div class="candidate-name">' + escapeHtml(rowValue(row, 'lead_name')) + '</div>';
             html += '<div class="candidate-meta"><strong>Email:</strong> ' + escapeHtml(candidateEmail) + '<br><strong>Phone:</strong> ' + escapeHtml(candidatePhone) + '<br><strong>Role:</strong> ' + escapeHtml(roleText) + '<br><strong>Applied:</strong> ' + escapeHtml(applyDateLabel) + '<br><strong>Conversion:</strong> ' + escapeHtml(conversionLabel) + '</div>';
             html += renderCandidateDetailGrid(row);
             html += '</div>';
@@ -1413,7 +1415,7 @@ $(function () {
             html += '<div class="card-score-row"><div><strong>AI Score</strong> <span class="label label-success card-ai-score">Pending</span></div><button type="button" class="btn btn-xs btn-info card-open-modal">View Details</button></div>';
             html += '<div class="card-system-data">';
             html += '<div class="skills-wrap">' + skillsHtml + '</div>';
-            html += '<div style="margin-top:14px;"><a href="view_resume.php?file=' + encodeURIComponent(row.original_resume_name || '') + '" target="_blank" class="btn btn-success btn-sm"><i class="fa fa-eye"></i> Open Resume</a> <a href="candidates.php" class="btn btn-default btn-sm"><i class="fa fa-users"></i> Candidates Page</a></div>';
+            html += '<div style="margin-top:14px;"><a href="view_resume.php?file=' + encodeURIComponent(rowValue(row, 'original_resume_name')) + '" target="_blank" class="btn btn-success btn-sm"><i class="fa fa-eye"></i> Open Resume</a> <a href="candidates.php" class="btn btn-default btn-sm"><i class="fa fa-users"></i> Candidates Page</a></div>';
             html += '</div>';
             html += '<div class="card-ai-insight"><strong>AI Insight</strong><div class="card-ai-why"></div><div class="card-ai-focus"></div></div>';
             html += '</div>';
@@ -1423,17 +1425,17 @@ $(function () {
 
     function renderCandidateDetailGrid(row) {
         var items = [
-            ['Status', row.lead_status_name || ''],
-            ['Source', row.lead_source_name || ''],
-            ['City', row.city || ''],
-            ['Relocate', row.willing_to_relocate || ''],
-            ['Current CTC', row.csalary || ''],
-            ['Expected CTC', row.esalary || ''],
-            ['Notice', row.nperiod || ''],
-            ['Qualification', row.qualification || ''],
-            ['Current Title', row.cjtitle || ''],
-            ['Employer', row.cemployer || ''],
-            ['Candidate Skills', row.skillset || '']
+            ['Status', rowValue(row, 'lead_status_name')],
+            ['Source', rowValue(row, 'lead_source_name')],
+            ['City', rowValue(row, 'city')],
+            ['Relocate', rowValue(row, 'willing_to_relocate')],
+            ['Current CTC', rowValue(row, 'csalary')],
+            ['Expected CTC', rowValue(row, 'esalary')],
+            ['Notice', rowValue(row, 'nperiod')],
+            ['Qualification', rowValue(row, 'qualification')],
+            ['Current Title', rowValue(row, 'cjtitle')],
+            ['Employer', rowValue(row, 'cemployer')],
+            ['Candidate Skills', rowValue(row, 'skillset')]
         ];
         var html = '<div class="candidate-detail-grid">';
         items.forEach(function (item) {
@@ -1442,6 +1444,14 @@ $(function () {
         });
         html += '</div>';
         return html;
+    }
+
+    function rowValue(row, key) {
+        if (!row || !Object.prototype.hasOwnProperty.call(row, key) || row[key] === null || typeof row[key] === 'undefined') {
+            return '';
+        }
+
+        return String(row[key]);
     }
 
     function cleanDetailValue(value) {
