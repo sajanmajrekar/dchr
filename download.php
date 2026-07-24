@@ -27,7 +27,7 @@ if ($result->num_rows > 0) {
     fputcsv($output, array('ID', 'Name', 'Email', 'Phone Number', 'Skill Set', 'Resume Link', 'Experience', 'Current Salary', 'Expected Salary', 'Notice Period', 'City'));
 
     // Base URL for resumes
-    $baseUrl = 'https://digichefs.in/hr/resume/';
+    $baseUrl = 'https://digichefs.in/newhr/resume/';
 
     // Output each row of the data, format line as CSV and write to file pointer
     while ($row = $result->fetch_assoc()) {
