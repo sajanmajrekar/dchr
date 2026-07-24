@@ -2,6 +2,9 @@
 include 'inc/config.php';
 $template['header_link'] = 'RESUME FILES';
 
+include 'inc/template_start.php';
+include 'inc/page_head.php';
+
 function resumeFilesEsc($value)
 {
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
@@ -97,9 +100,6 @@ if ($page > $pages) {
 }
 $offset = ($page - 1) * $perPage;
 $pageFiles = array_slice($matchingFiles, $offset, $perPage);
-
-include 'inc/template_start.php';
-include 'inc/page_head.php';
 ?>
 <style>
     .resume-files-hero {
@@ -306,4 +306,5 @@ include 'inc/page_head.php';
     </div>
 </div>
 
+<?php include 'inc/template_scripts.php'; ?>
 <?php include 'inc/template_end.php'; ?>
