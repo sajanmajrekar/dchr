@@ -335,6 +335,8 @@ function resumeLibraryHasActiveFilters($filters)
     return trim((string) $filters['q']) !== ''
         || (int) $filters['role'] > 0
         || trim((string) $filters['experience']) !== ''
+        || trim((string) $filters['experience_min']) !== ''
+        || trim((string) $filters['experience_max']) !== ''
         || (int) $filters['lead_status'] > 0
         || (int) $filters['source'] > 0
         || trim((string) $filters['city']) !== ''
@@ -353,7 +355,8 @@ function resumeLibraryBuildAiHiringBrief($filters, $aiQuery = '')
         $brief .= "\n\nCurrent structured filters:";
         $brief .= "\nKeyword search: " . ($filters['q'] !== '' ? $filters['q'] : 'none');
         $brief .= "\nRole filter ID: " . (int) $filters['role'];
-        $brief .= "\nExperience filter: " . ($filters['experience'] !== '' ? $filters['experience'] : 'none');
+        $brief .= "\nExperience minimum: " . (trim((string) $filters['experience_min']) !== '' ? $filters['experience_min'] : 'none');
+        $brief .= "\nExperience maximum: " . (trim((string) $filters['experience_max']) !== '' ? $filters['experience_max'] : 'none');
         $brief .= "\nLead status ID: " . (int) $filters['lead_status'];
         $brief .= "\nSource filter ID: " . (int) $filters['source'];
         $brief .= "\nCity filter: " . (!empty($filters['city']) ? $filters['city'] : 'none');
@@ -368,7 +371,8 @@ function resumeLibraryBuildAiHiringBrief($filters, $aiQuery = '')
 
     $brief = 'Keyword search: ' . ($filters['q'] !== '' ? $filters['q'] : 'none');
     $brief .= "\nRole filter ID: " . (int) $filters['role'];
-    $brief .= "\nExperience filter: " . ($filters['experience'] !== '' ? $filters['experience'] : 'none');
+    $brief .= "\nExperience minimum: " . (trim((string) $filters['experience_min']) !== '' ? $filters['experience_min'] : 'none');
+    $brief .= "\nExperience maximum: " . (trim((string) $filters['experience_max']) !== '' ? $filters['experience_max'] : 'none');
     $brief .= "\nLead status ID: " . (int) $filters['lead_status'];
     $brief .= "\nSource filter ID: " . (int) $filters['source'];
     $brief .= "\nCity filter: " . (!empty($filters['city']) ? $filters['city'] : 'none');
@@ -391,6 +395,8 @@ if ($requestMethod === 'POST' && $action !== '') {
             'q' => isset($_POST['q']) ? trim((string) $_POST['q']) : '',
             'role' => isset($_POST['role']) ? (int) $_POST['role'] : 0,
             'experience' => isset($_POST['experience']) ? trim((string) $_POST['experience']) : '',
+            'experience_min' => isset($_POST['experience_min']) ? trim((string) $_POST['experience_min']) : '',
+            'experience_max' => isset($_POST['experience_max']) ? trim((string) $_POST['experience_max']) : '',
             'lead_status' => isset($_POST['lead_status']) ? (int) $_POST['lead_status'] : 0,
             'source' => isset($_POST['source']) ? (int) $_POST['source'] : 0,
             'city' => isset($_POST['city']) ? trim((string) $_POST['city']) : '',
@@ -404,26 +410,27 @@ if ($requestMethod === 'POST' && $action !== '') {
         $debugRoleOptions = fetchResumeRoleOptions($connect);
         $debugStatusOptions = fetchResumeLeadStatusOptions($connect);
         $debugSourceOptions = fetchResumeSourceOptions($connect);
-        $effectiveFilters = resumeLibraryDeriveFiltersFromAiQuery($aiQuery, $filters, $debugRoleOptions, $debugStatusOptions, $debugSourceOptions);
+        $effectiveFilters = $filters;
+        $effectiveFilters['keywords'] = $filters['q'] !== '' ? resumeLibraryExtractAiKeywords($filters['q']) : array();
 
-        if ($aiQuery === '' && !resumeLibraryHasActiveFilters($filters)) {
+        if ((int) $filters['role'] <= 0 || trim((string) $filters['experience_min']) === '' || trim((string) $filters['experience_max']) === '' || trim((string) $filters['current_ctc']) === '' || trim((string) $filters['expected_ctc']) === '' || trim((string) $filters['city']) === '') {
             resumeLibraryJson(array(
                 'ok' => false,
-                'message' => 'Use a natural-language AI query or apply at least one filter before running AI Search.'
+                'message' => 'For AI Search, please select Role and enter Min Experience, Max Experience, Current CTC, Max CTC, and Location.'
             ));
         }
 
         $hiringBrief = resumeLibraryBuildAiHiringBrief($effectiveFilters, $aiQuery);
 
-        $uiResultLimit = 10;
-        $aiBatchLimit = 10;
+        $uiResultLimit = 50;
+        $aiBatchLimit = 50;
         $aiDebug = array(
             'recruiter_query' => $aiQuery !== '' ? $aiQuery : 'Not provided',
             'filters_used' => array(
                 'Keyword' => $effectiveFilters['q'] !== '' ? $effectiveFilters['q'] : 'Any keyword',
                 'AI keywords' => !empty($effectiveFilters['keywords']) ? implode(', ', $effectiveFilters['keywords']) : 'Any skill keyword',
                 'Role' => resumeLibraryOptionName($debugRoleOptions, $effectiveFilters['role'], 'Any role'),
-                'Experience' => $effectiveFilters['experience'] !== '' ? $effectiveFilters['experience'] . '+ years' : 'Any experience',
+                'Experience' => trim((string) $effectiveFilters['experience_min']) !== '' || trim((string) $effectiveFilters['experience_max']) !== '' ? trim((string) $effectiveFilters['experience_min']) . ' to ' . trim((string) $effectiveFilters['experience_max']) . ' years' : 'Any experience',
                 'Status' => resumeLibraryOptionName($debugStatusOptions, $effectiveFilters['lead_status'], 'Any status'),
                 'Source' => resumeLibraryOptionName($debugSourceOptions, $effectiveFilters['source'], 'Any source'),
                 'City' => !empty($effectiveFilters['city']) ? $effectiveFilters['city'] : 'Any city',
@@ -432,25 +439,27 @@ if ($requestMethod === 'POST' && $action !== '') {
                 'Expected CTC' => trim((string) $effectiveFilters['expected_ctc']) !== '' ? '<= ' . $effectiveFilters['expected_ctc'] : 'Any expected CTC',
                 'Notice Period' => trim((string) $effectiveFilters['notice_period']) !== '' ? $effectiveFilters['notice_period'] . ' days or less' : 'Any notice period',
                 'Date Added' => resumeLibraryIntervalLabel(isset($effectiveFilters['interval']) ? $effectiveFilters['interval'] : ''),
-                'Resume status' => 'Completed resumes only'
+                'Resume status' => 'Any matching lead with a resume file'
             ),
             'candidate_retrieval' => array(
-                'source' => 'resume_documents joined with tblleads',
-                'status_filter' => 'completed resumes only',
+                'source' => 'tblleads joined with resume_documents when available',
+                'status_filter' => 'not limited to completed index rows',
                 'result_limit' => $uiResultLimit,
                 'ai_batch_limit' => $aiBatchLimit,
                 'sort_order' => 'relevance_score DESC, application date DESC, resume updated DESC',
-                'note' => 'The typed AI query is converted into these CRM filters first; then SQL uses those values in the WHERE clause before Gemini scores the returned resumes.'
+                'note' => 'SQL uses only the visible recruiter-entered filters. The AI query box is sent as extra context for scoring and summary, not to auto-fill filters.'
             ),
             'hiring_brief_sent_to_ai' => $hiringBrief,
             'candidates_found_before_ai' => 0,
             'candidates_sent_to_ai' => array()
         );
-        $candidateResult = fetchResumeSearchResults($connect, array(
+        $candidateResult = fetchResumeLeadSearchResults($connect, array(
             'q' => $effectiveFilters['q'],
             'keywords' => isset($effectiveFilters['keywords']) ? $effectiveFilters['keywords'] : array(),
             'role' => $effectiveFilters['role'],
             'experience' => $effectiveFilters['experience'],
+            'experience_min' => isset($effectiveFilters['experience_min']) ? $effectiveFilters['experience_min'] : '',
+            'experience_max' => isset($effectiveFilters['experience_max']) ? $effectiveFilters['experience_max'] : '',
             'lead_status' => $effectiveFilters['lead_status'],
             'source' => $effectiveFilters['source'],
             'city' => isset($effectiveFilters['city']) ? $effectiveFilters['city'] : '',
@@ -458,15 +467,14 @@ if ($requestMethod === 'POST' && $action !== '') {
             'current_ctc' => isset($effectiveFilters['current_ctc']) ? $effectiveFilters['current_ctc'] : '',
             'expected_ctc' => isset($effectiveFilters['expected_ctc']) ? $effectiveFilters['expected_ctc'] : '',
             'notice_period' => isset($effectiveFilters['notice_period']) ? $effectiveFilters['notice_period'] : '',
-            'interval' => isset($effectiveFilters['interval']) ? $effectiveFilters['interval'] : '',
-            'status' => 'completed'
+            'interval' => isset($effectiveFilters['interval']) ? $effectiveFilters['interval'] : ''
         ), 1, $uiResultLimit);
 
         if (empty($candidateResult['rows'])) {
             $aiDebug['candidates_found_before_ai'] = isset($candidateResult['total']) ? (int) $candidateResult['total'] : 0;
             resumeLibraryJson(array(
                 'ok' => false,
-                'message' => 'No completed resumes match the AI-filled filters.',
+                'message' => 'No resume files match the selected AI filters.',
                 'ai_debug' => $aiDebug
             ));
         }
@@ -541,6 +549,8 @@ $filters = array(
     'q' => isset($_GET['q']) ? trim((string) $_GET['q']) : '',
     'role' => isset($_GET['role']) ? (int) $_GET['role'] : 0,
     'experience' => isset($_GET['experience']) ? trim((string) $_GET['experience']) : '',
+    'experience_min' => isset($_GET['experience_min']) ? trim((string) $_GET['experience_min']) : '',
+    'experience_max' => isset($_GET['experience_max']) ? trim((string) $_GET['experience_max']) : '',
     'lead_status' => isset($_GET['lead_status']) ? (int) $_GET['lead_status'] : 0,
     'source' => isset($_GET['source']) ? (int) $_GET['source'] : 0,
     'city' => isset($_GET['city']) ? trim((string) $_GET['city']) : '',
@@ -573,6 +583,8 @@ if ($hasActiveFilters) {
         'q' => $filters['q'],
         'role' => $filters['role'],
         'experience' => $filters['experience'],
+        'experience_min' => $filters['experience_min'],
+        'experience_max' => $filters['experience_max'],
         'lead_status' => $filters['lead_status'],
         'source' => $filters['source'],
         'city' => $filters['city'],
@@ -614,6 +626,21 @@ if ($hasActiveFilters) {
         color: rgba(255, 255, 255, 0.82);
         font-size: 15px;
         line-height: 1.6;
+    }
+    .resume-hero-actions {
+        margin-top: 16px;
+    }
+    .resume-hero-actions .btn {
+        border-radius: 999px;
+        padding: 9px 16px;
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+    }
+    .resume-hero-actions .btn:hover,
+    .resume-hero-actions .btn:focus {
+        background: rgba(255, 255, 255, 0.2);
+        color: #fff;
     }
     .mini-stats {
         display: grid;
@@ -908,6 +935,9 @@ if ($hasActiveFilters) {
     <div class="resume-hero">
         <h2>Recruiter Search + AI Copilot</h2>
         <p>The indexed resumes are now usable. Search the processed pool, check live current experience, and ask Gemini to explain which candidates best fit your hiring brief.</p>
+        <div class="resume-hero-actions">
+            <a href="resume_files.php" class="btn btn-sm"><i class="fa fa-folder-open"></i> Browse Resume Files</a>
+        </div>
         <div class="mini-stats">
             <div class="mini-stat">
                 <div class="mini-stat-value"><?php echo (int) $stats['completed']; ?></div>
@@ -941,8 +971,13 @@ if ($hasActiveFilters) {
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label for="experience">Experience</label>
-                    <input type="text" id="experience" name="experience" class="form-control input-lg" value="<?php echo resumeLibraryEsc($filters['experience']); ?>" placeholder="2, 3+, 5 years">
+                    <label for="experience_min">Min Experience</label>
+                    <input type="text" id="experience_min" name="experience_min" class="form-control input-lg" value="<?php echo resumeLibraryEsc($filters['experience_min']); ?>" placeholder="2">
+                </div>
+                <div class="col-md-2">
+                    <label for="experience_max">Max Experience</label>
+                    <input type="text" id="experience_max" name="experience_max" class="form-control input-lg" value="<?php echo resumeLibraryEsc($filters['experience_max']); ?>" placeholder="4">
+                    <input type="hidden" id="experience" name="experience" value="<?php echo resumeLibraryEsc($filters['experience']); ?>">
                 </div>
                 <div class="col-md-2">
                     <label for="lead_status">Status</label>
@@ -965,7 +1000,7 @@ if ($hasActiveFilters) {
             </div>
             <div class="row" style="margin-top:14px;">
                 <div class="col-md-2 col-sm-6">
-                    <label for="city">City</label>
+                    <label for="city">Location</label>
                     <input type="text" id="city" name="city" class="form-control input-lg" value="<?php echo resumeLibraryEsc($filters['city']); ?>" placeholder="Mumbai, Pune">
                 </div>
                 <div class="col-md-2 col-sm-6">
@@ -981,7 +1016,7 @@ if ($hasActiveFilters) {
                     <input type="text" id="current_ctc" name="current_ctc" class="form-control input-lg" value="<?php echo resumeLibraryEsc($filters['current_ctc']); ?>" placeholder="250000 or 2.5L">
                 </div>
                 <div class="col-md-2 col-sm-6">
-                    <label for="expected_ctc">Expected CTC</label>
+                    <label for="expected_ctc">Max CTC</label>
                     <input type="text" id="expected_ctc" name="expected_ctc" class="form-control input-lg" value="<?php echo resumeLibraryEsc($filters['expected_ctc']); ?>" placeholder="300000 or 3L">
                 </div>
                 <div class="col-md-2 col-sm-6">
@@ -999,9 +1034,9 @@ if ($hasActiveFilters) {
                 </div>
             </div>
             <div class="ai-query-box">
-                <label for="ai_query">AI recruiter query</label>
-                <textarea id="ai_query" class="form-control input-lg" placeholder="Example: I want an immediate joiner for SEO with 2 to 4 years experience, strong on-page and off-page skills, and preferably Mumbai based."></textarea>
-                <div class="ai-query-help">Type the requirement in plain English. AI will read the extracted resume text and rank the best matching candidates from the indexed PDF and DOC resumes.</div>
+                <label for="ai_query">Additional AI context</label>
+                <textarea id="ai_query" class="form-control input-lg" placeholder="Example: prioritize immediate joiners with strong on-page/off-page SEO and client communication."></textarea>
+                <div class="ai-query-help">Filters above decide which candidates enter the SQL result set. This text is only extra context for AI scoring and summary.</div>
             </div>
             <div style="margin-top:16px;">
                 <button type="submit" class="btn btn-primary btn-lg"><i class="fa fa-search"></i> Normal Search</button>
@@ -1013,14 +1048,14 @@ if ($hasActiveFilters) {
                 <div class="progress progress-striped active" style="margin-bottom:8px;">
                     <div id="aiProgressBar" class="progress-bar progress-bar-success" style="width: 8%;">8%</div>
                 </div>
-                <div id="aiProgressText" class="text-muted">Preparing top 10 matches...</div>
+                <div id="aiProgressText" class="text-muted">Preparing top 50 matches...</div>
             </div>
         </form>
     </div>
 
     <div class="resume-panel">
         <h3 class="side-title">Matching Candidates</h3>
-        <p class="text-muted" style="margin-top:-4px;">Normal search shows the matches. AI Search takes the top 10 current results and writes insights directly into those same cards.</p>
+        <p class="text-muted" style="margin-top:-4px;">Normal search shows the matches. AI Search takes the top 50 filtered results and writes insights directly into those same cards.</p>
         <div id="aiLogPanel" class="ai-log-panel">
             <h4 style="margin-top:0;">AI Search Log</h4>
             <p class="text-muted" style="margin-bottom:0;">This shows what the system searched before Gemini scored the resumes. No API key or secret values are shown here.</p>
@@ -1179,12 +1214,12 @@ $(function () {
 
     $('#runAiInsightsBtn').on('click', function () {
         var aiQuery = $('#ai_query').val().trim();
-        if (!aiQuery && !$('#q').val().trim() && (!$('#role').val() || $('#role').val() === '0') && !$('#experience').val().trim() && (!$('#lead_status').val() || $('#lead_status').val() === '0') && (!$('#source').val() || $('#source').val() === '0') && !$('#city').val().trim() && !$('#relocate').val() && !$('#current_ctc').val().trim() && !$('#expected_ctc').val().trim() && !$('#notice_period').val().trim() && !$('#interval').val()) {
-            $('#aiInsightMessage').text('Add an AI recruiter query or at least one filter before running AI Search.');
+        if ((!$('#role').val() || $('#role').val() === '0') || !$('#experience_min').val().trim() || !$('#experience_max').val().trim() || !$('#current_ctc').val().trim() || !$('#expected_ctc').val().trim() || !$('#city').val().trim()) {
+            $('#aiInsightMessage').text('AI Search requires Role, Min Experience, Max Experience, Current CTC, Max CTC, and Location.');
             return;
         }
 
-        $('#aiInsightMessage').text(aiQuery ? 'AI is reading resumes for your recruiter query...' : 'AI is analyzing the top 10 current search results...');
+        $('#aiInsightMessage').text(aiQuery ? 'AI is scoring 50 filtered resumes with your extra context...' : 'AI is analyzing the top 50 filtered resumes...');
         $('#aiSummaryPanel').removeClass('is-visible');
         $('#aiLogPanel').removeClass('is-visible');
         $('#aiLogContent').html('');
@@ -1210,6 +1245,8 @@ $(function () {
             q: $('#q').val(),
             role: $('#role').val(),
             experience: $('#experience').val(),
+            experience_min: $('#experience_min').val(),
+            experience_max: $('#experience_max').val(),
             lead_status: $('#lead_status').val(),
             source: $('#source').val(),
             city: $('#city').val(),

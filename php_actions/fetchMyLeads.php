@@ -275,17 +275,17 @@ function buildLeadWhereClause($connect)
 function buildLeadOrderBy()
 {
     $columnMap = array(
-        2 => 'tblleads.name',
-        3 => 'tblleads.email',
-        4 => 'tblleads.phonenumber',
-        5 => 'tblleads.city',
-        6 => 'tblleads.willing_to_relocate',
-        8 => 'tblleads.experiance',
-        9 => 'tblleads.csalary',
-        10 => 'tblleads.esalary',
-        11 => 'tblleads.nperiod',
-        12 => 'tblleads.dateadded',
-        14 => 'tblleadsstatus.name'
+        3 => 'tblleads.name',
+        4 => 'tblleads.email',
+        5 => 'tblleads.phonenumber',
+        6 => 'tblleads.city',
+        7 => 'tblleads.willing_to_relocate',
+        9 => 'tblleads.experiance',
+        10 => 'tblleads.csalary',
+        11 => 'tblleads.esalary',
+        12 => 'tblleads.nperiod',
+        13 => 'tblleads.dateadded',
+        15 => 'tblleadsstatus.name'
     );
 
     if (!isset($_POST['order'][0]['column'])) {
@@ -373,11 +373,12 @@ try {
         $leadAdditionalInfo = isset($row['ainfo']) ? $row['ainfo'] : '';
         $isCareersImport = stripos((string) $leadAdditionalInfo, 'Imported from careers email.') !== false;
 
+        $editButton = '<div class="candidate-actions-cell"><a data-target="#editMyLeadModal" onclick="editMyLead(' . $leadid . ')" data-toggle="modal" title="Edit Candidate" class="btn btn-effect-ripple btn-xs btn-success"><i class="fa fa-pencil"></i></a></div>';
         if (!empty($leadResume) && fetchMyLeadsResumeIsAvailable($leadResume)) {
             $resumeUrl = 'view_resume.php?file=' . rawurlencode($leadResume);
-            $button = '<div class="candidate-actions-cell"><a href="' . $resumeUrl . '" title="View Resume" target="_blank" class="btn btn-effect-ripple btn-xs btn-success"><i class="fa fa-eye"></i></a><a data-target="#editMyLeadModal" onclick="editMyLead(' . $leadid . ')" data-toggle="modal" title="Edit Candidate" class="btn btn-effect-ripple btn-xs btn-success"><i class="fa fa-pencil"></i></a></div>';
+            $resumeButton = '<div class="candidate-actions-cell"><a href="' . $resumeUrl . '" title="View Resume" target="_blank" class="btn btn-effect-ripple btn-xs btn-success"><i class="fa fa-eye"></i></a></div>';
         } else {
-            $button = '<div class="candidate-actions-cell"><span title="Resume not available" class="btn btn-effect-ripple btn-xs btn-default disabled resume-unavailable-action"><i class="fa fa-eye-slash"></i> Resume not available</span><a data-target="#editMyLeadModal" onclick="editMyLead(' . $leadid . ')" data-toggle="modal" title="Edit Candidate" class="btn btn-effect-ripple btn-xs btn-success"><i class="fa fa-pencil"></i></a></div>';
+            $resumeButton = '<div class="candidate-actions-cell"><span title="Resume not available" class="btn btn-effect-ripple btn-xs btn-danger disabled resume-unavailable-action"><i class="fa fa-eye-slash"></i></span></div>';
         }
 
         $nameCell = '<a data-target="#editMyLeadModal" onclick="editMyLead(' . $leadid . ')" href="#" data-toggle="modal" title="' . fetchMyLeadsEsc($leadName) . '">' . fetchMyLeadsEsc($leadName) . '</a>';
@@ -387,7 +388,8 @@ try {
 
         $output['data'][] = array(
             '<center><label class="csscheckbox csscheckbox-primary"><input type="checkbox" class="checkmark" name="leadcheckbox" value="' . $leadid . '"><span></span></label></center>',
-            $button,
+            $editButton,
+            $resumeButton,
             $nameCell,
             fetchMyLeadsEsc($leadEmail),
             fetchMyLeadsEsc($leadPhone),

@@ -382,7 +382,8 @@ div.dataTables_info{
                 <thead>
                     <tr>
                          <th class="text-center"><label class="csscheckbox csscheckbox-primary"><input class="checkmark" type="checkbox"><span></span></label></th>
-                         <th class="text-center" style="width: 170px;">Actions</th>
+                         <th class="text-center" style="width: 80px;">Edit</th>
+                         <th class="text-center" style="width: 80px;">Resume</th>
                         <th>Name</th>
                         <th>Email</th>
                         <th>Phone number</th>

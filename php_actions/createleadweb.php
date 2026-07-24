@@ -22,6 +22,7 @@ include('../mail/lib.php');
 include("../includes/dbcon.php");
 require_once 'core.php';
 include("../includes/function.php");
+require_once __DIR__ . '/../includes/resume_intelligence.php';
 // require ("../vendor/autoload.php");
 
 function getServerSecret($key)
@@ -282,9 +283,42 @@ HR team";
 						}
 		}
 	}
-		else{
-				$valid['success'] = false;
-				$valid['messages'] = "Your application is already with us. We will get back to you incase of any opening.";
+	else{
+        $existingLead = $result->fetch_assoc();
+        $leadId = isset($existingLead['id']) ? (int) $existingLead['id'] : 0;
+        $existingResume = isset($existingLead['resume']) ? (string) $existingLead['resume'] : '';
+        $finalResume = $existingResume;
+        $mailAttachment = '';
+
+        if (!empty($_FILES['example-file-input']['name'])) {
+            if (in_array($type, array('docx', 'doc', 'pdf', 'rtf', 'DOCX', 'DOC', 'PDF', 'RTF'))) {
+                if (is_uploaded_file($_FILES['example-file-input']['tmp_name']) && move_uploaded_file($_FILES['example-file-input']['tmp_name'], $url)) {
+                    $finalResume = $img_name;
+                    $mailAttachment = $url;
+                }
+            }
+        }
+
+        $finalResume = $connect->real_escape_string($finalResume);
+        $sql = "UPDATE tblleads SET name='$name', country='$country', zip='$pincode', city='$city', street='$street', source='$source', willing_to_relocate='$willing_to_relocate', email='$email', phonenumber='$phone', experiance='$experience', qualification='$qualification', cjtitle='$cjob', cemployer='$cemployer', esalary='$expected', csalary='$csalary', skillset='$skillset', ainfo='$info', roles='$selectedOption', nperiod='$nperiod', resume='$finalResume', referral='$refer', portfolio='$portfolio_link', modified='$date' WHERE id='$leadId'";
+
+        if ($leadId > 0 && $connect->query($sql) === TRUE && SendMailHTML('careers@digichefs.com', 'Digichefs || Job Application updated', $body, '', $mailAttachment)) {
+            $valid['success'] = true;
+            $valid['messages'] = "Thank you! We have updated your application at DigiChefs.";
+            SendMailHTML("$email", 'DigiChefs || Your Job Application is Updated', $receivedbody, '', '');
+            syncApplicantToMailerLite($email, $name, $valid);
+            syncApplicantToBrevo($email, $valid);
+            processResumeLead($connect, array(
+                'id' => $leadId,
+                'name' => stripslashes($name),
+                'email' => stripslashes($email),
+                'phonenumber' => stripslashes($phone),
+                'resume' => $finalResume
+            ));
+        } else {
+            $valid['success'] = false;
+            $valid['messages'] = "Error while updating your application" . $connect->error;
+        }
 	}
 	$connect->close();
 }// /if $_POST

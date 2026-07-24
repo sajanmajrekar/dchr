@@ -145,15 +145,44 @@ function careersImportSafeExtension($filename)
     return in_array($extension, $allowed, true) ? $extension : '';
 }
 
+function careersImportAttachmentValue($attachment, $keys)
+{
+    foreach ((array) $keys as $key) {
+        if (isset($attachment[$key]) && trim((string) $attachment[$key]) !== '') {
+            return (string) $attachment[$key];
+        }
+    }
+
+    return '';
+}
+
 function careersImportSaveAttachment($attachment)
 {
-    $filename = isset($attachment['filename']) ? (string) $attachment['filename'] : '';
+    $filename = careersImportAttachmentValue($attachment, array('filename', 'fileName', 'name'));
     $extension = careersImportSafeExtension($filename);
+    if ($extension === '') {
+        $mimeType = strtolower(careersImportAttachmentValue($attachment, array('mime_type', 'mimeType', 'content_type', 'contentType')));
+        $mimeExtensionMap = array(
+            'application/pdf' => 'pdf',
+            'application/msword' => 'doc',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+            'application/rtf' => 'rtf',
+            'text/rtf' => 'rtf',
+            'text/plain' => 'txt'
+        );
+        if (isset($mimeExtensionMap[$mimeType])) {
+            $extension = $mimeExtensionMap[$mimeType];
+            if (pathinfo($filename, PATHINFO_EXTENSION) === '') {
+                $filename .= '.' . $extension;
+            }
+        }
+    }
+
     if ($extension === '') {
         return array('ok' => false, 'message' => 'Unsupported attachment type: ' . $filename);
     }
 
-    $data = isset($attachment['data_base64']) ? (string) $attachment['data_base64'] : '';
+    $data = careersImportAttachmentValue($attachment, array('data_base64', 'base64', 'data', 'contentBytes', 'content_bytes'));
     $data = preg_replace('/^data:[^;]+;base64,/', '', $data);
     $data = str_replace(array("\r", "\n", ' '), '', (string) $data);
     $bytes = base64_decode($data, true);
@@ -181,8 +210,32 @@ function careersImportSaveAttachment($attachment)
     return array(
         'ok' => true,
         'stored_name' => $storedName,
-        'stored_path' => $storedPath
+        'stored_path' => $storedPath,
+        'original_filename' => $filename,
+        'extension' => $extension
     );
+}
+
+function careersImportAttachmentPriority($savedResume)
+{
+    $filename = strtolower(isset($savedResume['original_filename']) ? (string) $savedResume['original_filename'] : '');
+    $extension = strtolower(isset($savedResume['extension']) ? (string) $savedResume['extension'] : '');
+    $score = 0;
+
+    if (in_array($extension, array('pdf', 'docx', 'doc'), true)) {
+        $score += 50;
+    }
+    if ($extension === 'pdf') {
+        $score += 20;
+    }
+    if (strpos($filename, 'resume') !== false || strpos($filename, 'cv') !== false) {
+        $score += 30;
+    }
+    if ($extension === 'txt') {
+        $score -= 30;
+    }
+
+    return $score;
 }
 
 function careersImportFindLeadByEmail($connect, $email)
@@ -276,24 +329,30 @@ if (empty($attachments)) {
     careersImportJson(array('ok' => false, 'message' => 'No resume attachment found.'));
 }
 
-$savedResume = null;
+$savedResumes = array();
 $attachmentErrors = array();
 foreach ($attachments as $attachment) {
     $saveResult = careersImportSaveAttachment($attachment);
     if (!empty($saveResult['ok'])) {
-        $savedResume = $saveResult;
-        break;
+        $savedResumes[] = $saveResult;
+        continue;
     }
     $attachmentErrors[] = isset($saveResult['message']) ? $saveResult['message'] : 'Attachment skipped.';
 }
 
-if (!$savedResume) {
+if (empty($savedResumes)) {
     careersImportJson(array(
         'ok' => false,
         'message' => 'No supported resume attachment could be imported.',
         'attachment_errors' => $attachmentErrors
     ));
 }
+
+usort($savedResumes, function ($left, $right) {
+    return careersImportAttachmentPriority($right) - careersImportAttachmentPriority($left);
+});
+
+$savedResume = $savedResumes[0];
 
 $bodyText = isset($payload['body_text']) ? (string) $payload['body_text'] : '';
 $fromEmail = careersImportExtractEmail(isset($payload['from_email']) ? $payload['from_email'] : '');
@@ -358,6 +417,8 @@ careersImportLog('Careers email imported into CRM.', array(
     'lead_id' => $leadId,
     'email' => $fromEmail,
     'resume' => $savedResume['stored_name'],
+    'saved_attachment_count' => count($savedResumes),
+    'attachment_errors' => $attachmentErrors,
     'created' => $created,
     'indexed' => !empty($indexResult['ok'])
 ));
@@ -368,6 +429,8 @@ careersImportJson(array(
     'lead_id' => $leadId,
     'created' => $created,
     'resume' => $savedResume['stored_name'],
+    'saved_attachment_count' => count($savedResumes),
+    'attachment_errors' => $attachmentErrors,
     'indexed' => !empty($indexResult['ok'])
 ));
 
