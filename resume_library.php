@@ -422,8 +422,12 @@ if ($requestMethod === 'POST' && $action !== '') {
 
         $hiringBrief = resumeLibraryBuildAiHiringBrief($effectiveFilters, $aiQuery);
 
-        $uiResultLimit = 50;
-        $aiBatchLimit = 50;
+        $uiResultLimit = isset($_POST['ai_total_limit']) ? (int) $_POST['ai_total_limit'] : 50;
+        $uiResultLimit = max(10, min(50, $uiResultLimit));
+        $aiBatchOffset = isset($_POST['ai_offset']) ? (int) $_POST['ai_offset'] : 0;
+        $aiBatchOffset = max(0, $aiBatchOffset);
+        $aiBatchLimit = isset($_POST['ai_batch_size']) ? (int) $_POST['ai_batch_size'] : 10;
+        $aiBatchLimit = max(1, min(10, $aiBatchLimit));
         $aiDebug = array(
             'recruiter_query' => $aiQuery !== '' ? $aiQuery : 'Not provided',
             'filters_used' => array(
@@ -446,6 +450,7 @@ if ($requestMethod === 'POST' && $action !== '') {
                 'status_filter' => 'not limited to completed index rows',
                 'result_limit' => $uiResultLimit,
                 'ai_batch_limit' => $aiBatchLimit,
+                'batch_offset' => $aiBatchOffset,
                 'sort_order' => 'relevance_score DESC, application date DESC, resume updated DESC',
                 'note' => 'SQL uses only the visible recruiter-entered filters. The AI query box is sent as extra context for scoring and summary, not to auto-fill filters.'
             ),
@@ -479,11 +484,31 @@ if ($requestMethod === 'POST' && $action !== '') {
             ));
         }
 
-        $aiInputRows = array_slice($candidateResult['rows'], 0, $aiBatchLimit);
+        $aiInputRows = array_slice($candidateResult['rows'], $aiBatchOffset, $aiBatchLimit);
+        if (empty($aiInputRows)) {
+            resumeLibraryJson(array(
+                'ok' => false,
+                'message' => 'No more candidates are available for this AI batch.',
+                'candidate_rows' => array(),
+                'ai_debug' => $aiDebug,
+                'ai_batch' => array(
+                    'offset' => $aiBatchOffset,
+                    'batch_size' => $aiBatchLimit,
+                    'total_available' => count($candidateResult['rows']),
+                    'processed_to' => $aiBatchOffset,
+                    'is_final' => true
+                )
+            ));
+        }
         $aiFilters = $effectiveFilters;
         if ($aiQuery !== '') {
             $aiFilters['ai_query'] = $aiQuery;
         }
+        $aiFilters['batch'] = array(
+            'offset' => $aiBatchOffset,
+            'batch_size' => $aiBatchLimit,
+            'total_limit' => $uiResultLimit
+        );
         $aiResult = requestGeminiResumeInsights($hiringBrief, $aiInputRows, $aiFilters);
         $aiDebug['candidates_found_before_ai'] = isset($candidateResult['total']) ? (int) $candidateResult['total'] : count($candidateResult['rows']);
         $aiDebug['candidates_sent_to_ai'] = array_map(function ($candidateRow) {
@@ -495,7 +520,7 @@ if ($requestMethod === 'POST' && $action !== '') {
         }, $aiInputRows);
         $aiResult['ai_debug'] = $aiDebug;
         $candidateRowsForUi = array();
-        foreach ($candidateResult['rows'] as $candidateRow) {
+        foreach ($aiInputRows as $candidateRow) {
             $candidateRow['role_text'] = trim((string) getroletext((string) $candidateRow['roles']));
             $candidateRow['dynamic_experience_label'] = formatDynamicExperienceLabel(
                 isset($candidateRow['experiance']) ? (string) $candidateRow['experiance'] : '',
@@ -512,6 +537,14 @@ if ($requestMethod === 'POST' && $action !== '') {
         }
         $aiResult['candidate_rows'] = $candidateRowsForUi;
         $aiResult['ai_batch_limit'] = $aiBatchLimit;
+        $processedTo = min($aiBatchOffset + count($aiInputRows), count($candidateResult['rows']));
+        $aiResult['ai_batch'] = array(
+            'offset' => $aiBatchOffset,
+            'batch_size' => $aiBatchLimit,
+            'total_available' => count($candidateResult['rows']),
+            'processed_to' => $processedTo,
+            'is_final' => $processedTo >= count($candidateResult['rows']) || $processedTo >= $uiResultLimit
+        );
         if (!empty($aiResult['ok']) && !empty($aiResult['parsed']['all_candidates']) && is_array($aiResult['parsed']['all_candidates'])) {
             $insightMap = array();
             $nameMap = array();
@@ -562,7 +595,7 @@ $filters = array(
 );
 
 $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
-$perPage = 10;
+$perPage = 50;
 
 $stats = fetchResumeDocumentStats($connect);
 $queueStats = fetchResumeQueueStats($connect);
@@ -697,6 +730,26 @@ if ($hasActiveFilters) {
         font-size: 20px;
         font-weight: 600;
         color: #172033;
+    }
+    .candidate-title-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        margin-bottom: 6px;
+    }
+    .candidate-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 30px;
+        height: 30px;
+        border-radius: 999px;
+        background: #0f7a4f;
+        color: #fff;
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1;
+        flex: 0 0 auto;
     }
     .candidate-meta {
         color: #5c6677;
@@ -956,11 +1009,8 @@ if ($hasActiveFilters) {
 
     <div class="resume-panel">
         <form method="get" action="resume_library.php" class="form-horizontal">
+            <input type="hidden" id="q" name="q" value="">
             <div class="row">
-                <div class="col-md-4">
-                    <label for="q">Search keyword</label>
-                    <input type="text" id="q" name="q" class="form-control input-lg" value="<?php echo resumeLibraryEsc($filters['q']); ?>" placeholder="SEO, paid media, content, Meta ads, GA4, copywriting">
-                </div>
                 <div class="col-md-2">
                     <label for="role">Role</label>
                     <select id="role" name="role" class="form-control input-lg">
@@ -1034,9 +1084,9 @@ if ($hasActiveFilters) {
                 </div>
             </div>
             <div class="ai-query-box">
-                <label for="ai_query">Additional AI context</label>
+                <label for="ai_query">AI scoring instructions (optional)</label>
                 <textarea id="ai_query" class="form-control input-lg" placeholder="Example: prioritize immediate joiners with strong on-page/off-page SEO and client communication."></textarea>
-                <div class="ai-query-help">Filters above decide which candidates enter the SQL result set. This text is only extra context for AI scoring and summary.</div>
+                <div class="ai-query-help">Use this to tell AI how to rank the filtered candidates. It does not fetch extra candidates; Role, Experience, CTC, Location and other filters decide the result set.</div>
             </div>
             <div style="margin-top:16px;">
                 <button type="submit" class="btn btn-primary btn-lg"><i class="fa fa-search"></i> Normal Search</button>
@@ -1066,8 +1116,8 @@ if ($hasActiveFilters) {
             <p id="aiSummaryText" class="text-muted" style="margin-bottom:10px;">Waiting for AI shortlist...</p>
             <div class="ai-summary-grid">
                 <div class="ai-summary-box">
-                    <strong>Top 5 Recommended Candidates</strong>
-                    <div id="aiTopFiveList" style="margin-top:8px;"></div>
+                    <strong>Top 50 Recommended Candidates</strong>
+                    <div id="aiTopRecommendedList" style="margin-top:8px;"></div>
                 </div>
                 <div class="ai-summary-box">
                     <strong>Skills Heatmap</strong>
@@ -1090,8 +1140,9 @@ if ($hasActiveFilters) {
         <?php } ?>
 
         <div id="candidateGrid" class="candidate-grid">
-        <?php foreach ($results['rows'] as $row) { ?>
+        <?php foreach ($results['rows'] as $rowIndex => $row) { ?>
                     <?php
+                    $cardNumber = (($results['page'] - 1) * $results['per_page']) + $rowIndex + 1;
                     $candidateEmail = trim((string) ($row['extracted_email'] !== '' ? $row['extracted_email'] : $row['lead_email']));
                     $candidatePhone = trim((string) ($row['extracted_phone'] !== '' ? $row['extracted_phone'] : $row['lead_phone']));
                     $experienceLabel = formatDynamicExperienceLabel((string) $row['experiance'], (string) $row['dateadded']);
@@ -1109,7 +1160,10 @@ if ($hasActiveFilters) {
                          data-conversion-reason="<?php echo resumeLibraryEsc($conversionInsight['reason']); ?>">
                         <div class="candidate-head">
                             <div>
-                                <div class="candidate-name"><?php echo resumeLibraryEsc($row['lead_name']); ?></div>
+                                <div class="candidate-title-row">
+                                    <span class="candidate-number"><?php echo (int) $cardNumber; ?></span>
+                                    <div class="candidate-name"><?php echo resumeLibraryEsc($row['lead_name']); ?></div>
+                                </div>
                                 <div class="candidate-meta">
                                     <strong>Email:</strong> <?php echo resumeLibraryEsc($candidateEmail !== '' ? $candidateEmail : '-'); ?><br>
                                     <strong>Phone:</strong> <?php echo resumeLibraryEsc($candidatePhone !== '' ? $candidatePhone : '-'); ?><br>
@@ -1219,12 +1273,12 @@ $(function () {
             return;
         }
 
-        $('#aiInsightMessage').text(aiQuery ? 'AI is scoring 50 filtered resumes with your extra context...' : 'AI is analyzing the top 50 filtered resumes...');
+        $('#aiInsightMessage').text(aiQuery ? 'AI is scoring filtered resumes in batches of 10 with your extra context...' : 'AI is analyzing the top 50 filtered resumes in batches of 10...');
         $('#aiSummaryPanel').removeClass('is-visible');
         $('#aiLogPanel').removeClass('is-visible');
         $('#aiLogContent').html('');
         $('#aiSummaryText').text('Waiting for AI shortlist...');
-        $('#aiTopFiveList').html('');
+        $('#aiTopRecommendedList').html('');
         $('#aiSkillsHeatmap').html('');
         $('#aiExperienceDistribution').html('');
         $('#aiNoticePeriodAnalysis').html('');
@@ -1236,11 +1290,14 @@ $(function () {
         $('.candidate-card').removeData('aiPayload');
         $('.card-ai-why').html('');
         $('.card-ai-focus').html('');
+        $('#candidateGrid').html('');
         $('#aiProgressWrap').addClass('is-visible');
-        updateAiProgress(8, 'Preparing top matches for AI review...');
-        startAiProgressAnimation();
+        updateAiProgress(5, 'Starting batch 1 of up to 5...');
+        runAiBatch(aiQuery, 0, 10, 50, {});
+    });
 
-        $.post('resume_library.php', {
+    function buildAiRequestPayload(aiQuery, offset, batchSize, totalLimit) {
+        return {
             action: 'ai_insights',
             q: $('#q').val(),
             role: $('#role').val(),
@@ -1255,89 +1312,75 @@ $(function () {
             expected_ctc: $('#expected_ctc').val(),
             notice_period: $('#notice_period').val(),
             interval: $('#interval').val(),
-            ai_query: aiQuery
-        }, function (response) {
-            stopAiProgressAnimation();
+            ai_query: aiQuery,
+            ai_offset: offset,
+            ai_batch_size: batchSize,
+            ai_total_limit: totalLimit
+        };
+    }
+
+    function runAiBatch(aiQuery, offset, batchSize, totalLimit, accumulatedInsightMap) {
+        var batchNumber = Math.floor(offset / batchSize) + 1;
+        var maxBatches = Math.ceil(totalLimit / batchSize);
+        var progressBase = Math.min(95, Math.max(5, Math.round((offset / totalLimit) * 100)));
+        updateAiProgress(progressBase, 'Processing AI batch ' + batchNumber + ' of up to ' + maxBatches + '...');
+
+        $.post('resume_library.php', buildAiRequestPayload(aiQuery, offset, batchSize, totalLimit), function (response) {
+            var batch = response.ai_batch || {};
+            var processedTo = parseInt(batch.processed_to || (offset + batchSize), 10);
+            var totalAvailable = parseInt(batch.total_available || totalLimit, 10);
+            var effectiveTotal = Math.max(1, Math.min(totalLimit, totalAvailable));
+            var progress = Math.min(99, Math.max(progressBase, Math.round((Math.min(processedTo, effectiveTotal) / effectiveTotal) * 100)));
+
             if (Array.isArray(response.candidate_rows) && response.candidate_rows.length) {
-                renderCandidateCards(response.candidate_rows);
+                renderCandidateCards(response.candidate_rows, true);
                 $('#candidateGrid').addClass('ai-mode');
                 $('#resumeEmptyState').hide();
             }
 
+            if (response.ai_debug) {
+                renderAiLog(response.ai_debug || {}, response.parsed || {});
+            }
+
             if (!response.ok) {
-                $('#aiInsightMessage').text(response.message || 'Could not generate AI insights.');
-                if (response.ai_debug) {
-                    renderAiLog(response.ai_debug || {}, response.parsed || {});
-                }
-                updateAiProgress(100, 'AI search failed.');
-                if (!Array.isArray(response.candidate_rows) || !response.candidate_rows.length) {
+                $('#aiInsightMessage').text((response.message || 'Could not generate AI insights.') + ' Batch ' + batchNumber + ' stopped.');
+                updateAiProgress(100, 'AI search stopped at batch ' + batchNumber + '.');
+                if (!$('.candidate-card').length) {
                     $('#resumeEmptyState').show();
                 }
                 return;
             }
 
-            $('#aiInsightMessage').text(response.message || 'Insights ready.');
-            updateAiProgress(100, 'AI shortlist ready.');
-            renderAiLog(response.ai_debug || {}, response.parsed || {});
-            renderAiSummary(response.parsed || {});
+            if (response.parsed) {
+                renderAiSummary(response.parsed || {});
+            }
 
             var workingInsightMap = response.insight_map || {};
             if ((!workingInsightMap || !Object.keys(workingInsightMap).length) && response.parsed && Array.isArray(response.parsed.all_candidates)) {
-                workingInsightMap = buildSequentialInsightMap(response.parsed.all_candidates);
+                workingInsightMap = buildSequentialInsightMap(response.parsed.all_candidates, offset);
             }
 
             if (response.candidate_errors) {
-                Object.keys(response.candidate_errors).forEach(function (leadId) {
-                    var $card = $('.candidate-card[data-lead-id="' + leadId + '"]');
-                    if (!$card.length) {
-                        return;
-                    }
-                    $card.addClass('ai-ready ai-collapsed');
-                    $card.find('.card-ai-score').text('Error');
-                    $card.find('.card-ai-why').html('<strong>AI Summary:</strong> ' + escapeHtml(response.candidate_errors[leadId]));
-                    $card.find('.card-ai-focus').html('<strong>Interview focus:</strong> Resume needs manual review.');
-                    $card.find('.card-ai-insight').addClass('is-visible');
-                    $card.data('aiPayload', {
-                        ai_generated_candidate_summary: response.candidate_errors[leadId],
-                        interview_focus: 'Resume needs manual review.',
-                        recommended_interview_questions: [],
-                        risk_indicators: ['AI PDF processing failed for this resume.']
-                    });
-                });
+                markCandidateErrors(response.candidate_errors);
             }
 
-            if (workingInsightMap && Object.keys(workingInsightMap).length) {
-                sortCardsByAiScore(workingInsightMap);
-                Object.keys(workingInsightMap).forEach(function (leadId) {
-                    var item = workingInsightMap[leadId];
-                    var $card = $('.candidate-card[data-lead-id="' + leadId + '"]');
-                    if (!$card.length) {
-                        return;
-                    }
+            Object.keys(workingInsightMap || {}).forEach(function (leadId) {
+                accumulatedInsightMap[leadId] = workingInsightMap[leadId];
+            });
+            applyInsightMap(workingInsightMap || {});
 
-                    $card.addClass('ai-ready ai-collapsed');
-                    $card.find('.card-ai-score').text((item.candidate_match_score || item.match_score || item.fit_score || 0) + '/100');
-                    $card.find('.card-ai-why').html('<strong>AI Summary:</strong> ' + escapeHtml(item.ai_generated_candidate_summary || item.why || '-'));
-                    $card.find('.card-ai-focus').html('<strong>Interview readiness:</strong> ' + escapeHtml(String(item.interview_readiness_score || '-')) + ' | <strong>Interview focus:</strong> ' + escapeHtml(item.interview_focus || '-'));
-                    $card.find('.card-ai-insight').addClass('is-visible');
-                    $card.data('aiPayload', item);
-                });
-
-                $('.candidate-card').each(function () {
-                    var $card = $(this);
-                    if (!$card.hasClass('ai-ready')) {
-                        $card.addClass('ai-ready ai-collapsed');
-                        $card.find('.card-ai-score').text('No score');
-                        $card.find('.card-ai-why').html('<strong>AI Summary:</strong> AI did not return a mapped insight for this candidate.');
-                        $card.find('.card-ai-focus').html('<strong>Interview focus:</strong> Review manually.');
-                        $card.find('.card-ai-insight').addClass('is-visible');
-                    }
-                });
-            } else {
-                $('#aiInsightMessage').text('AI responded, but no card-level scores could be matched. Refine the filter and try again.');
+            var isFinal = !!batch.is_final || processedTo >= totalLimit || processedTo >= totalAvailable || !Array.isArray(response.candidate_rows) || response.candidate_rows.length < batchSize;
+            if (isFinal) {
+                markUnscoredCards();
+                sortCardsByAiScore(accumulatedInsightMap);
+                $('#aiInsightMessage').text('Insights ready for ' + $('.candidate-card').length + ' candidate' + ($('.candidate-card').length === 1 ? '' : 's') + '.');
+                updateAiProgress(100, 'AI shortlist ready.');
+                return;
             }
+
+            updateAiProgress(progress, 'Batch ' + batchNumber + ' complete. Starting next 10...');
+            runAiBatch(aiQuery, processedTo, batchSize, totalLimit, accumulatedInsightMap);
         }, 'json').fail(function () {
-            stopAiProgressAnimation();
             var errorText = 'Gemini request failed.';
             if (arguments.length > 0 && arguments[0]) {
                 var xhr = arguments[0];
@@ -1349,11 +1392,63 @@ $(function () {
                     errorText = 'Gemini request failed. HTTP ' + xhr.status;
                 }
             }
-            $('#aiInsightMessage').text(errorText);
-            updateAiProgress(100, 'AI search failed.');
-            $('#resumeEmptyState').show();
+            $('#aiInsightMessage').text(errorText + ' Batch ' + batchNumber + ' failed.');
+            updateAiProgress(100, 'AI search failed at batch ' + batchNumber + '.');
+            if (!$('.candidate-card').length) {
+                $('#resumeEmptyState').show();
+            }
         });
-    });
+    }
+
+    function markCandidateErrors(candidateErrors) {
+        Object.keys(candidateErrors).forEach(function (leadId) {
+            var $card = $('.candidate-card[data-lead-id="' + leadId + '"]');
+            if (!$card.length) {
+                return;
+            }
+            $card.addClass('ai-ready ai-collapsed');
+            $card.find('.card-ai-score').text('Error');
+            $card.find('.card-ai-why').html('<strong>AI Summary:</strong> ' + escapeHtml(candidateErrors[leadId]));
+            $card.find('.card-ai-focus').html('<strong>Interview focus:</strong> Resume needs manual review.');
+            $card.find('.card-ai-insight').addClass('is-visible');
+            $card.data('aiPayload', {
+                ai_generated_candidate_summary: candidateErrors[leadId],
+                interview_focus: 'Resume needs manual review.',
+                recommended_interview_questions: [],
+                risk_indicators: ['AI PDF processing failed for this resume.']
+            });
+        });
+    }
+
+    function applyInsightMap(insightMap) {
+        Object.keys(insightMap).forEach(function (leadId) {
+            var item = insightMap[leadId];
+            var $card = $('.candidate-card[data-lead-id="' + leadId + '"]');
+            if (!$card.length) {
+                return;
+            }
+
+            $card.addClass('ai-ready ai-collapsed');
+            $card.find('.card-ai-score').text((item.candidate_match_score || item.match_score || item.fit_score || 0) + '/100');
+            $card.find('.card-ai-why').html('<strong>AI Summary:</strong> ' + escapeHtml(item.ai_generated_candidate_summary || item.why || '-'));
+            $card.find('.card-ai-focus').html('<strong>Interview readiness:</strong> ' + escapeHtml(String(item.interview_readiness_score || '-')) + ' | <strong>Interview focus:</strong> ' + escapeHtml(item.interview_focus || '-'));
+            $card.find('.card-ai-insight').addClass('is-visible');
+            $card.data('aiPayload', item);
+        });
+    }
+
+    function markUnscoredCards() {
+        $('.candidate-card').each(function () {
+            var $card = $(this);
+            if (!$card.hasClass('ai-ready')) {
+                $card.addClass('ai-ready ai-collapsed');
+                $card.find('.card-ai-score').text('No score');
+                $card.find('.card-ai-why').html('<strong>AI Summary:</strong> AI did not return a mapped insight for this candidate.');
+                $card.find('.card-ai-focus').html('<strong>Interview focus:</strong> Review manually.');
+                $card.find('.card-ai-insight').addClass('is-visible');
+            }
+        });
+    }
 
     $(document).on('click', '.card-open-modal', function (event) {
         event.preventDefault();
@@ -1424,9 +1519,10 @@ $(function () {
         });
     }
 
-    function buildSequentialInsightMap(allCandidates) {
+    function buildSequentialInsightMap(allCandidates, offset) {
         var map = {};
-        var $cards = $('.candidate-card');
+        offset = parseInt(offset || 0, 10);
+        var $cards = $('.candidate-card').slice(offset, offset + allCandidates.length);
         $cards.each(function (index) {
             if (!allCandidates[index]) {
                 return;
@@ -1437,9 +1533,11 @@ $(function () {
         return map;
     }
 
-    function renderCandidateCards(rows) {
+    function renderCandidateCards(rows, append) {
         var html = '';
-        rows.forEach(function (row) {
+        var startNumber = append ? $('#candidateGrid .candidate-card').length : 0;
+        rows.forEach(function (row, rowIndex) {
+            var cardNumber = startNumber + rowIndex + 1;
             var candidateEmail = rowValue(row, 'extracted_email').trim() !== '' ? rowValue(row, 'extracted_email') : (rowValue(row, 'lead_email').trim() !== '' ? rowValue(row, 'lead_email') : '-');
             var candidatePhone = rowValue(row, 'extracted_phone').trim() !== '' ? rowValue(row, 'extracted_phone') : (rowValue(row, 'lead_phone').trim() !== '' ? rowValue(row, 'lead_phone') : '-');
             var roleText = rowValue(row, 'role_text').trim() !== '' ? rowValue(row, 'role_text') : '-';
@@ -1464,7 +1562,7 @@ $(function () {
             html += '<div class="candidate-card" data-lead-id="' + escapeHtml(rowValue(row, 'lead_id')) + '" data-resume-url="view_resume.php?file=' + encodeURIComponent(rowValue(row, 'original_resume_name')) + '" data-file-extension="' + escapeHtml(rowValue(row, 'file_extension')) + '" data-apply-date="' + escapeHtml(applyDateLabel) + '" data-conversion-label="' + escapeHtml(conversionLabel) + '" data-conversion-reason="' + escapeHtml(conversionReason) + '">';
             html += '<div class="candidate-head">';
             html += '<div>';
-            html += '<div class="candidate-name">' + escapeHtml(rowValue(row, 'lead_name')) + '</div>';
+            html += '<div class="candidate-title-row"><span class="candidate-number">' + escapeHtml(String(cardNumber)) + '</span><div class="candidate-name">' + escapeHtml(rowValue(row, 'lead_name')) + '</div></div>';
             html += '<div class="candidate-meta"><strong>Email:</strong> ' + escapeHtml(candidateEmail) + '<br><strong>Phone:</strong> ' + escapeHtml(candidatePhone) + '<br><strong>Role:</strong> ' + escapeHtml(roleText) + '<br><strong>Applied:</strong> ' + escapeHtml(applyDateLabel) + '<br><strong>Conversion:</strong> ' + escapeHtml(conversionLabel) + '</div>';
             html += renderCandidateDetailGrid(row);
             html += '</div>';
@@ -1478,7 +1576,11 @@ $(function () {
             html += '<div class="card-ai-insight"><strong>AI Insight</strong><div class="card-ai-why"></div><div class="card-ai-focus"></div></div>';
             html += '</div>';
         });
-        $('#candidateGrid').html(html);
+        if (append) {
+            $('#candidateGrid').append(html);
+        } else {
+            $('#candidateGrid').html(html);
+        }
     }
 
     function renderCandidateDetailGrid(row) {
@@ -1593,18 +1695,21 @@ $(function () {
     function renderAiSummary(parsed) {
         $('#aiSummaryPanel').addClass('is-visible');
         $('#aiSummaryText').text(parsed.summary || 'AI shortlist generated.');
-        $('#aiTopFiveList').html(renderTopFive(parsed.top_5_recommended_candidates || []));
+        $('#aiTopRecommendedList').html(renderTopRecommended(parsed.top_50_recommended_candidates || parsed.top_recommended_candidates || parsed.top_5_recommended_candidates || [], parsed.all_candidates || []));
         $('#aiSkillsHeatmap').html(renderSkillsHeatmap(parsed.skills_heatmap || []));
         $('#aiExperienceDistribution').html(renderSummaryValue(parsed.experience_distribution));
         $('#aiNoticePeriodAnalysis').html(renderSummaryValue(parsed.notice_period_analysis));
     }
 
-    function renderTopFive(items) {
+    function renderTopRecommended(items, allCandidates) {
+        if ((!Array.isArray(items) || !items.length) && Array.isArray(allCandidates) && allCandidates.length) {
+            items = allCandidates.slice(0, 50);
+        }
         if (!Array.isArray(items) || !items.length) {
             return '<span class="text-muted">Not available</span>';
         }
         var html = '<ol style="padding-left:18px; margin-bottom:0;">';
-        items.forEach(function (item) {
+        items.slice(0, 50).forEach(function (item) {
             html += '<li>' + escapeHtml(item.name || 'Candidate') + ' - ' + escapeHtml(String(item.match_score || item.candidate_match_score || 0)) + '/100</li>';
         });
         html += '</ol>';
