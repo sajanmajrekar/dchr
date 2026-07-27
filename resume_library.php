@@ -2,6 +2,30 @@
 ob_start();
 if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
     @ini_set('display_errors', '0');
+    register_shutdown_function(function () {
+        $error = error_get_last();
+        if (!$error || !in_array($error['type'], array(E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR), true)) {
+            return;
+        }
+
+        while (ob_get_level() > 0) {
+            @ob_end_clean();
+        }
+
+        http_response_code(200);
+        header('Content-Type: application/json');
+        echo json_encode(array(
+            'ok' => false,
+            'message' => 'AI batch failed on the server: ' . $error['message'] . '. Check that includes/resume_intelligence.php is uploaded on live.',
+            'candidate_rows' => array(),
+            'ai_batch' => array(
+                'offset' => isset($_POST['ai_offset']) ? (int) $_POST['ai_offset'] : 0,
+                'batch_size' => isset($_POST['ai_batch_size']) ? (int) $_POST['ai_batch_size'] : 10,
+                'processed_to' => isset($_POST['ai_offset']) ? (int) $_POST['ai_offset'] : 0,
+                'is_final' => true
+            )
+        ), JSON_UNESCAPED_SLASHES);
+    });
 }
 include 'inc/config.php';
 ?>
@@ -458,7 +482,7 @@ if ($requestMethod === 'POST' && $action !== '') {
             'candidates_found_before_ai' => 0,
             'candidates_sent_to_ai' => array()
         );
-        $candidateResult = fetchResumeLeadSearchResults($connect, array(
+        $candidateSearchFilters = array(
             'q' => $effectiveFilters['q'],
             'keywords' => isset($effectiveFilters['keywords']) ? $effectiveFilters['keywords'] : array(),
             'role' => $effectiveFilters['role'],
@@ -473,7 +497,17 @@ if ($requestMethod === 'POST' && $action !== '') {
             'expected_ctc' => isset($effectiveFilters['expected_ctc']) ? $effectiveFilters['expected_ctc'] : '',
             'notice_period' => isset($effectiveFilters['notice_period']) ? $effectiveFilters['notice_period'] : '',
             'interval' => isset($effectiveFilters['interval']) ? $effectiveFilters['interval'] : ''
-        ), 1, $uiResultLimit);
+        );
+
+        if (function_exists('fetchResumeLeadSearchResults')) {
+            $candidateResult = fetchResumeLeadSearchResults($connect, $candidateSearchFilters, 1, $uiResultLimit);
+        } else {
+            $candidateSearchFilters['status'] = 'completed';
+            $candidateResult = fetchResumeSearchResults($connect, $candidateSearchFilters, 1, $uiResultLimit);
+            $aiDebug['candidate_retrieval']['source'] = 'resume_documents joined with tblleads';
+            $aiDebug['candidate_retrieval']['status_filter'] = 'completed indexed resumes only';
+            $aiDebug['candidate_retrieval']['note'] = 'Live server is missing the newer fetchResumeLeadSearchResults helper. Upload includes/resume_intelligence.php to enable lead-first 50-result batching.';
+        }
 
         if (empty($candidateResult['rows'])) {
             $aiDebug['candidates_found_before_ai'] = isset($candidateResult['total']) ? (int) $candidateResult['total'] : 0;
