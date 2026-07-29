@@ -1,6 +1,8 @@
 img/
 resume/
 php_actions/db_connect.php
+includes/dbcon.php
+includes/dbcons.php
 data/tools/
 data/logs/
 data/resume_intelligence_config.json

@@ -1,7 +1,14 @@
 
 
 <IfModule mod_headers.c>
-  Header set Access-Control-Allow-Origin "https://digichefs.com"
-  Header set Access-Control-Allow-Methods "GET, POST, OPTIONS"
-  Header set Access-Control-Allow-Headers "Content-Type, Authorization"
+  SetEnvIfNoCase Origin "^https://new-hr-crm-react\.vercel\.app$" cors_origin=$0
+  SetEnvIfNoCase Origin "^https://digichefs\.com$" cors_origin=$0
+  SetEnvIfNoCase Origin "^https://digichefs\.in$" cors_origin=$0
+  SetEnvIfNoCase Origin "^http://localhost(:[0-9]+)?$" cors_origin=$0
+  SetEnvIfNoCase Origin "^http://127\.0\.0\.1(:[0-9]+)?$" cors_origin=$0
+
+  Header always set Access-Control-Allow-Origin "%{cors_origin}e" env=cors_origin
+  Header always set Access-Control-Allow-Methods "GET, POST, OPTIONS"
+  Header always set Access-Control-Allow-Headers "Content-Type, Authorization"
+  Header always set Vary "Origin"
 </IfModule>
