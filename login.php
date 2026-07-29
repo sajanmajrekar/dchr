@@ -1,28 +1,28 @@
 <?php include 'inc/config.php'; ?>
-<?php include 'inc/template_start.php'; 
-if(isset($_SESSION['user'])){
-   echo '<script>window.location.href="index.php";</script>';
-   exit();
+<?php include 'inc/template_start.php';
+if (isset($_SESSION['user'])) {
+    echo '<script>window.location.href="index.php";</script>';
+    exit();
 }
 ?>
 
-<?php  require_once('includes/dbcon.php');  
+<?php require_once('includes/dbcon.php');
 
 $sql = "SELECT * from subscription";
 
 $result = $connect->query($sql);
 
-if($result->num_rows > 0) { 
+if ($result->num_rows > 0) {
 
- // $row = $result->fetch_array();
- $active = ""; 
- $i= 1;
+    // $row = $result->fetch_array();
+    $active = "";
+    $i = 1;
 
- while($row = $result->fetch_array()) {
- 	if($row['status'] != 1) {
- 	    header("Location:expired.php");
- 	}
- }
+    while ($row = $result->fetch_array()) {
+        if ($row['status'] != 1) {
+            header("Location:expired.php");
+        }
+    }
 }
 ?>
 
@@ -49,17 +49,19 @@ if($result->num_rows > 0) {
         <!-- END Login Title -->
 
         <!-- Login Form -->
-        <form id="form-login" action="/newhr/php_actions/checklogin.php" method="post" class="form-horizontal">
+        <form id="form-login" action="/hr/php_actions/checklogin.php" method="post" class="form-horizontal">
             <div class="form-group">
                 <label for="login-email" class="col-xs-12">Email</label>
                 <div class="col-xs-12">
-                    <input type="text" id="login-email" name="login-email" class="form-control" placeholder="Your email..">
+                    <input type="text" id="login-email" name="login-email" class="form-control"
+                        placeholder="Your email..">
                 </div>
             </div>
             <div class="form-group">
                 <label for="login-password" class="col-xs-12">Password</label>
                 <div class="col-xs-12">
-                    <input type="password" id="login-password" name="login-password" class="form-control" placeholder="Your password..">
+                    <input type="password" id="login-password" name="login-password" class="form-control"
+                        placeholder="Your password..">
                 </div>
             </div>
             <div class="form-group form-actions">
@@ -68,7 +70,8 @@ if($result->num_rows > 0) {
             <div class="form-group form-actions">
                 <div class="col-xs-8">
                     <label class="csscheckbox csscheckbox-primary hide">
-                        <input type="checkbox"  id="login-remember-me" name="login-remember-me"><span></span> Remember Me?
+                        <input type="checkbox" id="login-remember-me" name="login-remember-me"><span></span> Remember
+                        Me?
                     </label>
                 </div>
                 <div class="col-xs-4 text-right">
@@ -82,7 +85,8 @@ if($result->num_rows > 0) {
 
     <!-- Footer -->
     <footer class="text-muted text-center animation-pullUp">
-        <small><span id="year-copy"></span> &copy; <a href="https://DigiChefs.com" target="_blank"><?php echo $template['name']?></a></small>
+        <small><span id="year-copy"></span> &copy; <a href="https://DigiChefs.com"
+                target="_blank"><?php echo $template['name'] ?></a></small>
     </footer>
     <!-- END Footer -->
 </div>

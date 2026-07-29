@@ -1,0 +1,2 @@
+=== tblleads ===
+id, name, title, company, description, country, zip, city, state, street, assigned, dateadded, status, source, willing_to_relocate, lastcontact, dateassigned, last_status_change, addedfrom, email, website, phonenumber, experiance, qualification, cjtitle, cemployer, esalary, csalary, skillset, referral, ainfo, roles, nperiod, resume, portfolio, followup, last_lead_status, modified, modifiedby, 
