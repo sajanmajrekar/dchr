@@ -25,6 +25,9 @@ $leadId = isset($payload['lead_id']) ? (int) $payload['lead_id'] : 0;
 $statusId = isset($payload['status_id']) ? (int) $payload['status_id'] : 0;
 $comment = isset($payload['comment']) ? trim((string) $payload['comment']) : '';
 $staffId = isset($_SESSION['id']) ? (int) $_SESSION['id'] : (isset($_SESSION['staffid']) ? (int) $_SESSION['staffid'] : 0);
+if ($staffId <= 0 && isset($payload['staff_id'])) {
+    $staffId = (int) $payload['staff_id'];
+}
 
 if ($leadId <= 0 || $statusId <= 0) {
     http_response_code(422);
@@ -74,6 +77,28 @@ $oldStatusId = isset($lead['status']) ? (int) $lead['status'] : 0;
 $statusChanged = $oldStatusId !== $statusId;
 $hasComment = $comment !== '';
 $date = date('Y-m-d H:i:s');
+$hrName = '';
+$hrProfileImage = '';
+$hrProfileImageUrl = '';
+
+if ($staffId > 0) {
+    $staffStmt = $connect->prepare("SELECT TRIM(CONCAT(COALESCE(firstname, ''), ' ', COALESCE(lastname, ''))) AS name, profile_image FROM tblstaff WHERE staffid = ? LIMIT 1");
+    if ($staffStmt) {
+        $staffStmt->bind_param('i', $staffId);
+        $staffStmt->execute();
+        $staffResult = $staffStmt->get_result();
+        $staff = $staffResult ? $staffResult->fetch_assoc() : null;
+        $staffStmt->close();
+        if ($staff && trim((string) $staff['name']) !== '') {
+            $hrName = trim((string) $staff['name']);
+            $hrProfileImage = trim((string) $staff['profile_image']);
+        }
+    }
+}
+
+if ($hrName === '') {
+    $staffId = 0;
+}
 
 if ($statusChanged) {
     $updateStmt = $connect->prepare("UPDATE tblleads SET status = ?, lastcontact = ?, followup = followup + 1 WHERE id = ?");
@@ -112,19 +137,18 @@ if ($statusChanged || $hasComment) {
     }
 }
 
-$hrName = '';
-if ($staffId > 0) {
-    $staffStmt = $connect->prepare("SELECT TRIM(CONCAT(COALESCE(firstname, ''), ' ', COALESCE(lastname, ''))) AS name FROM tblstaff WHERE staffid = ? LIMIT 1");
-    if ($staffStmt) {
-        $staffStmt->bind_param('i', $staffId);
-        $staffStmt->execute();
-        $staffResult = $staffStmt->get_result();
-        $staff = $staffResult ? $staffResult->fetch_assoc() : null;
-        $staffStmt->close();
-        if ($staff && trim((string) $staff['name']) !== '') {
-            $hrName = trim((string) $staff['name']);
-        }
+if ($hrProfileImage !== '') {
+    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+        (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+    $origin = ($isHttps ? 'https://' : 'http://') . (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost');
+    $scriptDir = str_replace('\\', '/', dirname(isset($_SERVER['SCRIPT_NAME']) ? $_SERVER['SCRIPT_NAME'] : '/hr/new-api/update_candidate_status.php'));
+    $appBasePath = rtrim(dirname($scriptDir), '/');
+    if ($appBasePath === '' || $appBasePath === '.') {
+        $appBasePath = '';
     }
+    $hrProfileImageUrl = preg_match('/^https?:\/\//i', $hrProfileImage)
+        ? $hrProfileImage
+        : $origin . $appBasePath . '/' . ltrim(str_replace('\\', '/', $hrProfileImage), '/');
 }
 
 echo json_encode(array(
@@ -135,6 +159,8 @@ echo json_encode(array(
         'status' => $status['name'],
         'last_contact' => $date,
         'latest_hr_name' => $hrName,
+        'latest_hr_profile_image' => $hrProfileImage,
+        'latest_hr_profile_image_url' => $hrProfileImageUrl,
         'latest_hr_comment' => $comment,
         'latest_hr_comment_date' => ($statusChanged || $hasComment) ? $date : null
     )
