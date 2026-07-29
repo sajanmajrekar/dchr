@@ -419,8 +419,8 @@ function extractBaseExperienceYears($experienceText)
         $isWholeNumber = floor($numericValue) === $numericValue;
 
         // Heuristic for old tblleads data:
-        // a bare value like "11" is often stored as months, not years.
-        if ($isWholeNumber && $numericValue > 8) {
+        // bare values above 7 are often stored as months, not years.
+        if ($isWholeNumber && $numericValue > 7) {
             return $numericValue / 12;
         }
 

@@ -134,9 +134,7 @@ function aiSearchHiringBrief($filters, $instructions)
     $brief .= "\nExperience minimum: " . $filters['experience_min'];
     $brief .= "\nExperience maximum: " . $filters['experience_max'];
     $brief .= "\nLead status ID: " . (int) $filters['lead_status'];
-    $brief .= "\nSource filter ID: " . (int) $filters['source'];
     $brief .= "\nLocation filter: " . $filters['city'];
-    $brief .= "\nRelocation filter: " . ($filters['relocate'] !== '' ? $filters['relocate'] : 'none');
     $brief .= "\nCurrent CTC maximum: " . $filters['current_ctc'];
     $brief .= "\nMax CTC / expected CTC maximum: " . $filters['expected_ctc'];
     $brief .= "\nNotice period maximum: " . ($filters['notice_period'] !== '' ? $filters['notice_period'] : 'none');
@@ -298,7 +296,6 @@ if (empty($candidateRows)) {
             'Role' => aiSearchOptionName($roleOptions, $filters['role'], 'Any role'),
             'Experience' => $filters['experience_min'] . ' to ' . $filters['experience_max'] . ' years',
             'Status' => aiSearchOptionName($statusOptions, $filters['lead_status'], 'Any status'),
-            'Source' => aiSearchOptionName($sourceOptions, $filters['source'], 'Any source'),
             'Location' => $filters['city'],
             'Current CTC' => '<= ' . $filters['current_ctc'],
             'Max CTC' => '<= ' . $filters['expected_ctc'],
@@ -366,9 +363,7 @@ aiSearchJson(array(
         'Role' => aiSearchOptionName($roleOptions, $filters['role'], 'Any role'),
         'Experience' => $filters['experience_min'] . ' to ' . $filters['experience_max'] . ' years',
         'Status' => aiSearchOptionName($statusOptions, $filters['lead_status'], 'Any status'),
-        'Source' => aiSearchOptionName($sourceOptions, $filters['source'], 'Any source'),
         'Location' => $filters['city'],
-        'Relocate' => $filters['relocate'] !== '' ? $filters['relocate'] : 'Any',
         'Current CTC' => '<= ' . $filters['current_ctc'],
         'Max CTC' => '<= ' . $filters['expected_ctc'],
         'Notice Period' => $filters['notice_period'] !== '' ? '<= ' . $filters['notice_period'] . ' days' : 'Any',

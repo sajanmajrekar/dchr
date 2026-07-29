@@ -222,6 +222,7 @@ if ($result && $result->num_rows > 0) {
             'expected_ctc' => $row['esalary'],
             'skillset' => $row['skillset'],
             'additional_info' => $row['ainfo'],
+            'is_careers_import' => stripos((string) $row['ainfo'], 'Imported from careers email.') !== false,
             'referral' => $row['referral'],
             'notice_period' => $row['nperiod'],
             'date_added' => $row['dateadded'],
