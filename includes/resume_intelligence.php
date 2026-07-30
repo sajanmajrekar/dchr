@@ -1984,6 +1984,72 @@ function normalizeGeminiJsonResponseText($text)
     return $text;
 }
 
+function extractGeminiUsageMetadata($response)
+{
+    $usage = is_array($response) && isset($response['usage']) && is_array($response['usage']) ? $response['usage'] : array();
+
+    $inputTokens = 0;
+    foreach (array('input_tokens', 'prompt_tokens', 'inputTokenCount', 'promptTokenCount') as $key) {
+        if (isset($usage[$key]) && is_numeric($usage[$key])) {
+            $inputTokens = (int) $usage[$key];
+            break;
+        }
+    }
+
+    $outputTokens = 0;
+    foreach (array('output_tokens', 'completion_tokens', 'outputTokenCount', 'candidatesTokenCount') as $key) {
+        if (isset($usage[$key]) && is_numeric($usage[$key])) {
+            $outputTokens = (int) $usage[$key];
+            break;
+        }
+    }
+
+    $totalTokens = 0;
+    foreach (array('total_tokens', 'totalTokenCount') as $key) {
+        if (isset($usage[$key]) && is_numeric($usage[$key])) {
+            $totalTokens = (int) $usage[$key];
+            break;
+        }
+    }
+
+    if ($totalTokens <= 0) {
+        $totalTokens = $inputTokens + $outputTokens;
+    }
+
+    return array(
+        'input_tokens' => max(0, $inputTokens),
+        'output_tokens' => max(0, $outputTokens),
+        'total_tokens' => max(0, $totalTokens),
+        'raw_usage' => $usage
+    );
+}
+
+function normalizeGeminiUsageForLog($usage)
+{
+    if (!is_array($usage)) {
+        return array(
+            'input_tokens' => 0,
+            'output_tokens' => 0,
+            'total_tokens' => 0,
+            'raw_usage' => array()
+        );
+    }
+
+    $inputTokens = isset($usage['input_tokens']) ? (int) $usage['input_tokens'] : 0;
+    $outputTokens = isset($usage['output_tokens']) ? (int) $usage['output_tokens'] : 0;
+    $totalTokens = isset($usage['total_tokens']) ? (int) $usage['total_tokens'] : 0;
+    if ($totalTokens <= 0) {
+        $totalTokens = $inputTokens + $outputTokens;
+    }
+
+    return array(
+        'input_tokens' => max(0, $inputTokens),
+        'output_tokens' => max(0, $outputTokens),
+        'total_tokens' => max(0, $totalTokens),
+        'raw_usage' => isset($usage['raw_usage']) && is_array($usage['raw_usage']) ? $usage['raw_usage'] : array()
+    );
+}
+
 function normalizeResumeCandidateKey($value)
 {
     $value = strtolower(trim((string) $value));
@@ -2317,6 +2383,7 @@ function requestGeminiResumeInsights($hiringBrief, $candidateRows, $filters = ar
     }
 
     $decoded = json_decode($rawResponse, true);
+    $usageMetadata = is_array($decoded) ? extractGeminiUsageMetadata($decoded) : extractGeminiUsageMetadata(array());
     if ($httpCode >= 400) {
         $errorMessage = 'Gemini API returned HTTP ' . $httpCode . '.';
         if (is_array($decoded) && isset($decoded['error']['message'])) {
@@ -2338,6 +2405,7 @@ function requestGeminiResumeInsights($hiringBrief, $candidateRows, $filters = ar
         return array(
             'ok' => false,
             'message' => $errorMessage,
+            'usage' => $usageMetadata,
             'candidate_errors' => $candidateErrors
         );
     }
@@ -2361,7 +2429,8 @@ function requestGeminiResumeInsights($hiringBrief, $candidateRows, $filters = ar
 
         return array(
             'ok' => false,
-            'message' => 'Gemini returned HTTP 200 but the response was not valid JSON. Check data/logs/gemini_resume.log on the server.'
+            'message' => 'Gemini returned HTTP 200 but the response was not valid JSON. Check data/logs/gemini_resume.log on the server.',
+            'usage' => $usageMetadata
         );
     }
 
@@ -2381,7 +2450,8 @@ function requestGeminiResumeInsights($hiringBrief, $candidateRows, $filters = ar
 
         return array(
             'ok' => false,
-            'message' => 'Gemini returned HTTP 200 but no usable output text was found. Check data/logs/gemini_resume.log on the server.'
+            'message' => 'Gemini returned HTTP 200 but no usable output text was found. Check data/logs/gemini_resume.log on the server.',
+            'usage' => $usageMetadata
         );
     }
 
@@ -2394,6 +2464,7 @@ function requestGeminiResumeInsights($hiringBrief, $candidateRows, $filters = ar
             'ok' => false,
             'message' => 'Gemini returned text, but it was not valid JSON. Check data/logs/gemini_resume.log on the server.',
             'raw_text' => $outputText,
+            'usage' => $usageMetadata,
             'candidate_errors' => $candidateErrors,
             'successful_candidate_ids' => $successfulCandidateIds
         );
@@ -2404,6 +2475,7 @@ function requestGeminiResumeInsights($hiringBrief, $candidateRows, $filters = ar
         'message' => 'Gemini insights generated.',
         'raw_text' => $outputText,
         'parsed' => is_array($parsed) ? $parsed : null,
+        'usage' => $usageMetadata,
         'candidate_errors' => $candidateErrors,
         'successful_candidate_ids' => $successfulCandidateIds
     );

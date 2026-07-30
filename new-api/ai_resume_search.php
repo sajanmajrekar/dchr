@@ -127,6 +127,209 @@ function aiSearchKeywords($text)
     return array_keys($keywords);
 }
 
+function ensureHrAiUsageLogsTable($connect)
+{
+    if (!($connect instanceof mysqli)) {
+        return false;
+    }
+
+    $created = (bool) $connect->query("CREATE TABLE IF NOT EXISTS hr_ai_usage_logs (
+        id int(11) NOT NULL AUTO_INCREMENT,
+        staff_id int(11) NOT NULL DEFAULT 0,
+        tool_name varchar(50) NOT NULL DEFAULT 'HrCrm',
+        feature_name varchar(100) NOT NULL DEFAULT 'ai_search',
+        model_name varchar(100) DEFAULT NULL,
+        input_tokens int(11) NOT NULL DEFAULT 0,
+        output_tokens int(11) NOT NULL DEFAULT 0,
+        total_tokens int(11) NOT NULL DEFAULT 0,
+        candidate_count int(11) NOT NULL DEFAULT 0,
+        batch_offset int(11) NOT NULL DEFAULT 0,
+        batch_size int(11) NOT NULL DEFAULT 0,
+        status varchar(30) NOT NULL DEFAULT 'success',
+        external_usage_id int(11) DEFAULT NULL,
+        input_cost decimal(18,8) NOT NULL DEFAULT 0.00000000,
+        output_cost decimal(18,8) NOT NULL DEFAULT 0.00000000,
+        total_cost decimal(18,8) NOT NULL DEFAULT 0.00000000,
+        currency varchar(10) NOT NULL DEFAULT 'USD',
+        external_response_json longtext DEFAULT NULL,
+        notes text DEFAULT NULL,
+        created_at datetime NOT NULL DEFAULT current_timestamp(),
+        PRIMARY KEY (id),
+        KEY idx_hr_ai_usage_staff_date (staff_id, created_at),
+        KEY idx_hr_ai_usage_tool_date (tool_name, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    if (!$created) {
+        return false;
+    }
+
+    $columns = array(
+        'input_cost' => "ALTER TABLE hr_ai_usage_logs ADD input_cost decimal(18,8) NOT NULL DEFAULT 0.00000000 AFTER external_usage_id",
+        'output_cost' => "ALTER TABLE hr_ai_usage_logs ADD output_cost decimal(18,8) NOT NULL DEFAULT 0.00000000 AFTER input_cost",
+        'total_cost' => "ALTER TABLE hr_ai_usage_logs ADD total_cost decimal(18,8) NOT NULL DEFAULT 0.00000000 AFTER output_cost",
+        'currency' => "ALTER TABLE hr_ai_usage_logs ADD currency varchar(10) NOT NULL DEFAULT 'USD' AFTER total_cost"
+    );
+
+    foreach ($columns as $column => $alterSql) {
+        $check = $connect->query("SHOW COLUMNS FROM hr_ai_usage_logs LIKE '" . $connect->real_escape_string($column) . "'");
+        $exists = $check && $check->num_rows > 0;
+        if ($check) {
+            $check->free();
+        }
+        if (!$exists) {
+            $connect->query($alterSql);
+        }
+    }
+
+    return true;
+}
+
+function aiSearchUsageApiConfig()
+{
+    global $hrcrm_ai_usage_api_url, $hrcrm_ai_usage_api_key, $hrcrm_ai_usage_tool_name;
+
+    return array(
+        'url' => isset($hrcrm_ai_usage_api_url) && trim((string) $hrcrm_ai_usage_api_url) !== '' ? trim((string) $hrcrm_ai_usage_api_url) : 'https://digichefs.in/ai-usage-api/log-usage.php',
+        'api_key' => isset($hrcrm_ai_usage_api_key) && trim((string) $hrcrm_ai_usage_api_key) !== '' ? trim((string) $hrcrm_ai_usage_api_key) : 'dgcf_ai_usage_2026_x7Kp92LmQ4vN8zR1tB6sY3wE',
+        'tool_name' => isset($hrcrm_ai_usage_tool_name) && trim((string) $hrcrm_ai_usage_tool_name) !== '' ? trim((string) $hrcrm_ai_usage_tool_name) : 'HrCrm'
+    );
+}
+
+function aiSearchPostUsageToExternalApi($usage, $notes)
+{
+    if (!function_exists('curl_init')) {
+        return array('ok' => false, 'message' => 'cURL is not available.');
+    }
+
+    $config = aiSearchUsageApiConfig();
+    if ($config['url'] === '' || $config['api_key'] === '') {
+        return array('ok' => false, 'message' => 'Usage API is not configured.');
+    }
+
+    $payload = array(
+        'tool_name' => $config['tool_name'],
+        'input_tokens' => isset($usage['input_tokens']) ? (int) $usage['input_tokens'] : 0,
+        'output_tokens' => isset($usage['output_tokens']) ? (int) $usage['output_tokens'] : 0,
+        'total_tokens' => isset($usage['total_tokens']) ? (int) $usage['total_tokens'] : 0,
+        'image_count' => 0,
+        'status' => 'success',
+        'notes' => $notes
+    );
+
+    $ch = curl_init($config['url']);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+        'X-API-KEY: ' . $config['api_key'],
+        'Content-Type: application/json'
+    ));
+    curl_setopt($ch, CURLOPT_POSTFIELDS, resumeJsonEncode($payload, JSON_UNESCAPED_SLASHES));
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+
+    $rawResponse = curl_exec($ch);
+    $curlError = curl_error($ch);
+    $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    $decoded = is_string($rawResponse) ? json_decode($rawResponse, true) : null;
+
+    return array(
+        'ok' => $rawResponse !== false && $httpCode < 400 && is_array($decoded) && !empty($decoded['success']),
+        'http_code' => $httpCode,
+        'message' => $curlError,
+        'response' => is_array($decoded) ? $decoded : $rawResponse
+    );
+}
+
+function aiSearchLogUsage($connect, $staffId, $aiResult, $filters, $batchRows, $offset, $batchSize, $status = 'success')
+{
+    if (!ensureHrAiUsageLogsTable($connect)) {
+        return array('ok' => false, 'message' => 'Could not create usage log table.');
+    }
+
+    $usage = normalizeGeminiUsageForLog(isset($aiResult['usage']) ? $aiResult['usage'] : array());
+    $geminiStatus = getGeminiResumeStatus();
+    $modelName = isset($geminiStatus['model']) ? (string) $geminiStatus['model'] : '';
+    $notes = resumeJsonEncode(array(
+        'feature' => 'ai_search',
+        'staff_id' => (int) $staffId,
+        'candidate_count' => count($batchRows),
+        'candidate_ids' => array_values(array_map(function ($row) {
+            return isset($row['lead_id']) ? (int) $row['lead_id'] : 0;
+        }, (array) $batchRows)),
+        'batch_offset' => (int) $offset,
+        'batch_size' => (int) $batchSize,
+        'filters' => $filters
+    ), JSON_UNESCAPED_SLASHES);
+
+    $external = aiSearchPostUsageToExternalApi($usage, $notes);
+    $externalUsageId = null;
+    if (!empty($external['response']['data']['id'])) {
+        $externalUsageId = (int) $external['response']['data']['id'];
+    }
+    $externalData = !empty($external['response']['data']) && is_array($external['response']['data']) ? $external['response']['data'] : array();
+    $inputCost = isset($externalData['input_cost']) ? (float) $externalData['input_cost'] : 0.0;
+    $outputCost = isset($externalData['output_cost']) ? (float) $externalData['output_cost'] : 0.0;
+    $totalCost = isset($externalData['total_cost']) ? (float) $externalData['total_cost'] : ($inputCost + $outputCost);
+    $currency = isset($externalData['currency']) && trim((string) $externalData['currency']) !== '' ? trim((string) $externalData['currency']) : 'USD';
+    $externalJson = resumeJsonEncode($external, JSON_UNESCAPED_SLASHES);
+
+    $toolName = aiSearchUsageApiConfig()['tool_name'];
+    $featureName = 'ai_search';
+    $inputTokens = (int) $usage['input_tokens'];
+    $outputTokens = (int) $usage['output_tokens'];
+    $totalTokens = (int) $usage['total_tokens'];
+    $candidateCount = count($batchRows);
+
+    $stmt = $connect->prepare("INSERT INTO hr_ai_usage_logs (
+        staff_id, tool_name, feature_name, model_name, input_tokens, output_tokens, total_tokens,
+        candidate_count, batch_offset, batch_size, status, external_usage_id, input_cost, output_cost,
+        total_cost, currency, external_response_json, notes
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+    if (!$stmt) {
+        return array('ok' => false, 'message' => 'Could not prepare usage log insert.');
+    }
+
+    $stmt->bind_param(
+        'isssiiiiiisidddsss',
+        $staffId,
+        $toolName,
+        $featureName,
+        $modelName,
+        $inputTokens,
+        $outputTokens,
+        $totalTokens,
+        $candidateCount,
+        $offset,
+        $batchSize,
+        $status,
+        $externalUsageId,
+        $inputCost,
+        $outputCost,
+        $totalCost,
+        $currency,
+        $externalJson,
+        $notes
+    );
+    $ok = $stmt->execute();
+    $localId = $stmt->insert_id;
+    $stmt->close();
+
+    return array(
+        'ok' => $ok,
+        'local_id' => $localId,
+        'external' => $external,
+        'usage' => array_merge($usage, array(
+            'input_cost' => $inputCost,
+            'output_cost' => $outputCost,
+            'total_cost' => $totalCost,
+            'currency' => $currency
+        ))
+    );
+}
+
 function aiSearchHiringBrief($filters, $instructions)
 {
     $brief = "Structured recruiter filters:";
@@ -278,6 +481,7 @@ $totalLimit = max(10, min(50, (int) aiSearchPostValue('total_limit', 50)));
 $offset = max(0, (int) aiSearchPostValue('offset', 0));
 $batchSize = max(1, min(10, (int) aiSearchPostValue('batch_size', 10)));
 $instructions = aiSearchPostValue('instructions');
+$staffId = max(0, (int) aiSearchPostValue('staff_id', 0));
 
 $roleOptions = fetchResumeRoleOptions($connect);
 $statusOptions = fetchResumeLeadStatusOptions($connect);
@@ -330,10 +534,13 @@ $aiFilters['batch'] = array(
 
 $aiResult = requestGeminiResumeInsights($hiringBrief, $batchRows, $aiFilters);
 if (empty($aiResult['ok'])) {
+    $usageLog = aiSearchLogUsage($connect, $staffId, $aiResult, $aiFilters, $batchRows, $offset, $batchSize, 'error');
     aiSearchJson(array(
         'success' => false,
         'message' => isset($aiResult['message']) ? $aiResult['message'] : 'AI batch failed.',
         'cards' => array(),
+        'usage' => isset($usageLog['usage']) ? $usageLog['usage'] : normalizeGeminiUsageForLog(array()),
+        'usage_log' => $usageLog,
         'candidate_errors' => isset($aiResult['candidate_errors']) ? $aiResult['candidate_errors'] : array(),
         'batch' => array(
             'offset' => $offset,
@@ -344,6 +551,8 @@ if (empty($aiResult['ok'])) {
         )
     ));
 }
+
+$usageLog = aiSearchLogUsage($connect, $staffId, $aiResult, $aiFilters, $batchRows, $offset, $batchSize, 'success');
 
 $insightMap = aiSearchInsightMap($aiResult, $batchRows);
 $cards = array();
@@ -359,6 +568,13 @@ aiSearchJson(array(
     'message' => 'AI batch completed.',
     'cards' => $cards,
     'summary' => isset($aiResult['parsed']['summary']) ? $aiResult['parsed']['summary'] : '',
+    'usage' => isset($usageLog['usage']) ? $usageLog['usage'] : normalizeGeminiUsageForLog(array()),
+    'usage_log' => array(
+        'ok' => isset($usageLog['ok']) ? $usageLog['ok'] : false,
+        'local_id' => isset($usageLog['local_id']) ? $usageLog['local_id'] : null,
+        'external_ok' => isset($usageLog['external']['ok']) ? $usageLog['external']['ok'] : false,
+        'external_id' => isset($usageLog['external']['response']['data']['id']) ? $usageLog['external']['response']['data']['id'] : null
+    ),
     'filters_used' => array(
         'Role' => aiSearchOptionName($roleOptions, $filters['role'], 'Any role'),
         'Experience' => $filters['experience_min'] . ' to ' . $filters['experience_max'] . ' years',
