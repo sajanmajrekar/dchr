@@ -1,7 +1,7 @@
 <?php
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Headers: Content-Type, X-HR-SESSION, Authorization');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -9,6 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once '../php_actions/db_connect.php';
+require_once 'auth_helper.php';
 
 if (!($connect instanceof mysqli)) {
     http_response_code(500);
@@ -54,6 +55,7 @@ if (!$user) {
 }
 
 $role = $user['admin'] == 2 ? 'Superadmin' : ($user['admin'] == 1 ? 'Admin' : 'User');
+$sessionToken = apiIssueReactSession($connect, (int) $user['staffid']);
 
 echo json_encode(array(
     'success' => true,
@@ -63,7 +65,8 @@ echo json_encode(array(
         'email' => $user['email'],
         'phone' => $user['phonenumber'],
         'profile_image' => $user['profile_image'],
-        'role' => $role
+        'role' => $role,
+        'session_token' => $sessionToken
     )
 ), JSON_UNESCAPED_SLASHES);
 

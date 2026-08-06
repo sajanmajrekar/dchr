@@ -184,6 +184,151 @@ function ensureHrAiUsageLogsTable($connect)
     return true;
 }
 
+function ensureHrAiSearchHistoryTable($connect)
+{
+    if (!($connect instanceof mysqli)) {
+        return false;
+    }
+
+    return (bool) $connect->query("CREATE TABLE IF NOT EXISTS hr_ai_search_history (
+        id int(11) NOT NULL AUTO_INCREMENT,
+        staff_id int(11) NOT NULL DEFAULT 0,
+        title varchar(255) NOT NULL DEFAULT 'AI Search',
+        filters_json longtext DEFAULT NULL,
+        filters_used_json longtext DEFAULT NULL,
+        summary text DEFAULT NULL,
+        result_cards_json longtext DEFAULT NULL,
+        processed_count int(11) NOT NULL DEFAULT 0,
+        total_limit int(11) NOT NULL DEFAULT 50,
+        total_available int(11) NOT NULL DEFAULT 0,
+        input_tokens int(11) NOT NULL DEFAULT 0,
+        output_tokens int(11) NOT NULL DEFAULT 0,
+        total_tokens int(11) NOT NULL DEFAULT 0,
+        status varchar(30) NOT NULL DEFAULT 'running',
+        created_at datetime NOT NULL DEFAULT current_timestamp(),
+        updated_at datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+        PRIMARY KEY (id),
+        KEY idx_hr_ai_search_history_staff_date (staff_id, updated_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+}
+
+function aiSearchHistoryTitle($filters, $roleOptions)
+{
+    $parts = array();
+    $roleLabel = aiSearchOptionName($roleOptions, isset($filters['role']) ? (int) $filters['role'] : 0, '');
+    if ($roleLabel !== '') {
+        $parts[] = $roleLabel;
+    }
+    if (!empty($filters['city'])) {
+        $parts[] = $filters['city'];
+    }
+    if (!empty($filters['experience_min']) || !empty($filters['experience_max'])) {
+        $parts[] = trim((string) $filters['experience_min']) . '-' . trim((string) $filters['experience_max']) . ' yrs';
+    }
+
+    $title = trim(implode(' | ', array_filter($parts)));
+    return $title !== '' ? substr($title, 0, 255) : 'AI Search';
+}
+
+function aiSearchCreateHistory($connect, $staffId, $filters, $roleOptions, $totalLimit)
+{
+    if (!ensureHrAiSearchHistoryTable($connect)) {
+        return 0;
+    }
+
+    $title = aiSearchHistoryTitle($filters, $roleOptions);
+    $filtersJson = resumeJsonEncode($filters, JSON_UNESCAPED_SLASHES);
+    $emptyCards = resumeJsonEncode(array(), JSON_UNESCAPED_SLASHES);
+    $status = 'running';
+    $stmt = $connect->prepare("INSERT INTO hr_ai_search_history (staff_id, title, filters_json, result_cards_json, total_limit, status) VALUES (?, ?, ?, ?, ?, ?)");
+    if (!$stmt) {
+        return 0;
+    }
+
+    $stmt->bind_param('isssis', $staffId, $title, $filtersJson, $emptyCards, $totalLimit, $status);
+    $ok = $stmt->execute();
+    $id = $ok ? (int) $stmt->insert_id : 0;
+    $stmt->close();
+
+    return $id;
+}
+
+function aiSearchUpdateHistory($connect, $historyId, $staffId, $filtersUsed, $summary, $newCards, $processedTo, $totalLimit, $totalAvailable, $usage, $isFinal, $status)
+{
+    $historyId = (int) $historyId;
+    if ($historyId <= 0 || !ensureHrAiSearchHistoryTable($connect)) {
+        return false;
+    }
+
+    $existingCards = array();
+    $result = $connect->query("SELECT result_cards_json, input_tokens, output_tokens, total_tokens FROM hr_ai_search_history WHERE id = " . $historyId . " AND staff_id = " . (int) $staffId . " LIMIT 1");
+    $inputTokens = 0;
+    $outputTokens = 0;
+    $totalTokens = 0;
+    if ($result) {
+        $row = $result->fetch_assoc();
+        if ($row) {
+            $decodedCards = json_decode((string) $row['result_cards_json'], true);
+            $existingCards = is_array($decodedCards) ? $decodedCards : array();
+            $inputTokens = (int) $row['input_tokens'];
+            $outputTokens = (int) $row['output_tokens'];
+            $totalTokens = (int) $row['total_tokens'];
+        }
+        $result->free();
+    }
+
+    $cardsByLead = array();
+    foreach (array_merge($existingCards, (array) $newCards) as $card) {
+        if (is_array($card) && isset($card['lead_id'])) {
+            $cardsByLead[(int) $card['lead_id']] = $card;
+        }
+    }
+
+    $allCards = array_values($cardsByLead);
+    $filtersUsedJson = resumeJsonEncode($filtersUsed, JSON_UNESCAPED_SLASHES);
+    $cardsJson = resumeJsonEncode($allCards, JSON_UNESCAPED_SLASHES);
+    $inputTokens += isset($usage['input_tokens']) ? (int) $usage['input_tokens'] : 0;
+    $outputTokens += isset($usage['output_tokens']) ? (int) $usage['output_tokens'] : 0;
+    $totalTokens += isset($usage['total_tokens']) ? (int) $usage['total_tokens'] : 0;
+    $finalStatus = $status !== '' ? $status : ($isFinal ? 'completed' : 'running');
+
+    $stmt = $connect->prepare("UPDATE hr_ai_search_history
+        SET filters_used_json = ?,
+            summary = ?,
+            result_cards_json = ?,
+            processed_count = ?,
+            total_limit = ?,
+            total_available = ?,
+            input_tokens = ?,
+            output_tokens = ?,
+            total_tokens = ?,
+            status = ?
+        WHERE id = ? AND staff_id = ?");
+    if (!$stmt) {
+        return false;
+    }
+
+    $stmt->bind_param(
+        'sssiiiiiisii',
+        $filtersUsedJson,
+        $summary,
+        $cardsJson,
+        $processedTo,
+        $totalLimit,
+        $totalAvailable,
+        $inputTokens,
+        $outputTokens,
+        $totalTokens,
+        $finalStatus,
+        $historyId,
+        $staffId
+    );
+    $ok = $stmt->execute();
+    $stmt->close();
+
+    return $ok;
+}
+
 function aiSearchUsageApiConfig()
 {
     global $hrcrm_ai_usage_api_url, $hrcrm_ai_usage_api_key, $hrcrm_ai_usage_tool_name;
@@ -482,38 +627,51 @@ $offset = max(0, (int) aiSearchPostValue('offset', 0));
 $batchSize = max(1, min(10, (int) aiSearchPostValue('batch_size', 10)));
 $instructions = aiSearchPostValue('instructions');
 $staffId = max(0, (int) aiSearchPostValue('staff_id', 0));
+$historyId = max(0, (int) aiSearchPostValue('history_id', 0));
 
 $roleOptions = fetchResumeRoleOptions($connect);
 $statusOptions = fetchResumeLeadStatusOptions($connect);
 $sourceOptions = fetchResumeSourceOptions($connect);
 $hiringBrief = aiSearchHiringBrief($filters, $instructions);
+$historyFilters = $filters;
+$historyFilters['instructions'] = $instructions;
+$historyFilters['total_limit'] = (string) $totalLimit;
+if ($historyId <= 0 && $offset === 0) {
+    $historyId = aiSearchCreateHistory($connect, $staffId, $historyFilters, $roleOptions, $totalLimit);
+}
 $candidateResult = fetchResumeLeadSearchResults($connect, $filters, 1, $totalLimit);
 $candidateRows = isset($candidateResult['rows']) ? $candidateResult['rows'] : array();
 $batchRows = array_slice($candidateRows, $offset, $batchSize);
 
+$filtersUsedPayload = array(
+    'Role' => aiSearchOptionName($roleOptions, $filters['role'], 'Any role'),
+    'Experience' => $filters['experience_min'] . ' to ' . $filters['experience_max'] . ' years',
+    'Status' => aiSearchOptionName($statusOptions, $filters['lead_status'], 'Any status'),
+    'Location' => $filters['city'],
+    'Current CTC' => '<= ' . $filters['current_ctc'],
+    'Max CTC' => '<= ' . $filters['expected_ctc'],
+    'Notice Period' => $filters['notice_period'] !== '' ? '<= ' . $filters['notice_period'] . ' days' : 'Any',
+    'Date Added' => aiSearchIntervalLabel($filters['interval'])
+);
+
 if (empty($candidateRows)) {
+    aiSearchUpdateHistory($connect, $historyId, $staffId, $filtersUsedPayload, '', array(), 0, $totalLimit, 0, array(), true, 'empty');
     aiSearchJson(array(
         'success' => false,
         'message' => 'No resume files match the selected filters.',
         'cards' => array(),
-        'filters_used' => array(
-            'Role' => aiSearchOptionName($roleOptions, $filters['role'], 'Any role'),
-            'Experience' => $filters['experience_min'] . ' to ' . $filters['experience_max'] . ' years',
-            'Status' => aiSearchOptionName($statusOptions, $filters['lead_status'], 'Any status'),
-            'Location' => $filters['city'],
-            'Current CTC' => '<= ' . $filters['current_ctc'],
-            'Max CTC' => '<= ' . $filters['expected_ctc'],
-            'Notice Period' => $filters['notice_period'] !== '' ? '<= ' . $filters['notice_period'] . ' days' : 'Any',
-            'Date Added' => aiSearchIntervalLabel($filters['interval'])
-        )
+        'history_id' => $historyId,
+        'filters_used' => $filtersUsedPayload
     ));
 }
 
 if (empty($batchRows)) {
+    aiSearchUpdateHistory($connect, $historyId, $staffId, $filtersUsedPayload, '', array(), $offset, $totalLimit, count($candidateRows), array(), true, 'completed');
     aiSearchJson(array(
         'success' => true,
         'message' => 'No more candidates are available.',
         'cards' => array(),
+        'history_id' => $historyId,
         'batch' => array(
             'offset' => $offset,
             'batch_size' => $batchSize,
@@ -535,10 +693,12 @@ $aiFilters['batch'] = array(
 $aiResult = requestGeminiResumeInsights($hiringBrief, $batchRows, $aiFilters);
 if (empty($aiResult['ok'])) {
     $usageLog = aiSearchLogUsage($connect, $staffId, $aiResult, $aiFilters, $batchRows, $offset, $batchSize, 'error');
+    aiSearchUpdateHistory($connect, $historyId, $staffId, $filtersUsedPayload, '', array(), $offset, $totalLimit, count($candidateRows), isset($usageLog['usage']) ? $usageLog['usage'] : array(), false, 'error');
     aiSearchJson(array(
         'success' => false,
         'message' => isset($aiResult['message']) ? $aiResult['message'] : 'AI batch failed.',
         'cards' => array(),
+        'history_id' => $historyId,
         'usage' => isset($usageLog['usage']) ? $usageLog['usage'] : normalizeGeminiUsageForLog(array()),
         'usage_log' => $usageLog,
         'candidate_errors' => isset($aiResult['candidate_errors']) ? $aiResult['candidate_errors'] : array(),
@@ -562,12 +722,16 @@ foreach ($batchRows as $index => $row) {
 }
 
 $processedTo = min($offset + count($batchRows), count($candidateRows), $totalLimit);
+$isFinal = $processedTo >= count($candidateRows) || $processedTo >= $totalLimit;
+$summaryText = isset($aiResult['parsed']['summary']) ? $aiResult['parsed']['summary'] : '';
+aiSearchUpdateHistory($connect, $historyId, $staffId, $filtersUsedPayload, $summaryText, $cards, $processedTo, $totalLimit, count($candidateRows), isset($usageLog['usage']) ? $usageLog['usage'] : array(), $isFinal, $isFinal ? 'completed' : 'running');
 
 aiSearchJson(array(
     'success' => true,
     'message' => 'AI batch completed.',
     'cards' => $cards,
-    'summary' => isset($aiResult['parsed']['summary']) ? $aiResult['parsed']['summary'] : '',
+    'history_id' => $historyId,
+    'summary' => $summaryText,
     'usage' => isset($usageLog['usage']) ? $usageLog['usage'] : normalizeGeminiUsageForLog(array()),
     'usage_log' => array(
         'ok' => isset($usageLog['ok']) ? $usageLog['ok'] : false,
@@ -575,21 +739,12 @@ aiSearchJson(array(
         'external_ok' => isset($usageLog['external']['ok']) ? $usageLog['external']['ok'] : false,
         'external_id' => isset($usageLog['external']['response']['data']['id']) ? $usageLog['external']['response']['data']['id'] : null
     ),
-    'filters_used' => array(
-        'Role' => aiSearchOptionName($roleOptions, $filters['role'], 'Any role'),
-        'Experience' => $filters['experience_min'] . ' to ' . $filters['experience_max'] . ' years',
-        'Status' => aiSearchOptionName($statusOptions, $filters['lead_status'], 'Any status'),
-        'Location' => $filters['city'],
-        'Current CTC' => '<= ' . $filters['current_ctc'],
-        'Max CTC' => '<= ' . $filters['expected_ctc'],
-        'Notice Period' => $filters['notice_period'] !== '' ? '<= ' . $filters['notice_period'] . ' days' : 'Any',
-        'Date Added' => aiSearchIntervalLabel($filters['interval'])
-    ),
+    'filters_used' => $filtersUsedPayload,
     'batch' => array(
         'offset' => $offset,
         'batch_size' => $batchSize,
         'total_available' => count($candidateRows),
         'processed_to' => $processedTo,
-        'is_final' => $processedTo >= count($candidateRows) || $processedTo >= $totalLimit
+        'is_final' => $isFinal
     )
 ));

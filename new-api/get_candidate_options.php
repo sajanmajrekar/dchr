@@ -16,10 +16,23 @@ if ($statusResult) {
     $statusResult->free();
 }
 
+$roles = array();
+$roleResult = $connect->query("SELECT id, name FROM tblrole ORDER BY name ASC");
+if ($roleResult) {
+    while ($row = $roleResult->fetch_assoc()) {
+        $roles[] = array(
+            'id' => (int) $row['id'],
+            'name' => $row['name']
+        );
+    }
+    $roleResult->free();
+}
+
 echo json_encode(array(
     'success' => true,
     'data' => array(
-        'statuses' => $statuses
+        'statuses' => $statuses,
+        'roles' => $roles
     )
 ));
 

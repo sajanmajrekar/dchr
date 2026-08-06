@@ -78,6 +78,11 @@ if ($search !== '') {
     $where[] = "(l.name LIKE $like OR l.email LIKE $like OR l.phonenumber LIKE $like OR l.city LIKE $like OR l.skillset LIKE $like OR l.resume LIKE $like)";
 }
 
+$role = isset($_GET['role']) ? (int) $_GET['role'] : 0;
+if ($role > 0) {
+    $where[] = "FIND_IN_SET('" . $role . "', COALESCE(l.roles, ''))";
+}
+
 $status = isset($_GET['status']) ? (int) $_GET['status'] : 0;
 if ($status > 0) {
     $where[] = "l.status = " . $status;
