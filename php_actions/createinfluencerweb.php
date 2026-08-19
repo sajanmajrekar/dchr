@@ -46,6 +46,18 @@ function influencerSqlValue($connect, $key)
     return $connect->real_escape_string(influencerPostValue($key));
 }
 
+function influencerLimitText($value, $maxLength)
+{
+    $value = trim((string) $value);
+    $maxLength = max(1, (int) $maxLength);
+
+    if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+        return mb_strlen($value, 'UTF-8') > $maxLength ? mb_substr($value, 0, $maxLength, 'UTF-8') : $value;
+    }
+
+    return strlen($value) > $maxLength ? substr($value, 0, $maxLength) : $value;
+}
+
 function influencerColumnExists($connect, $columnName)
 {
     $result = $connect->query("SHOW COLUMNS FROM tblleads LIKE '" . $connect->real_escape_string($columnName) . "'");
@@ -63,6 +75,14 @@ function influencerMaybeColumn($connect, $columnName, $value, &$columns, &$value
         return;
     }
 
+    $safeValue = $connect->real_escape_string((string) $value);
+    $columns[] = "`" . $columnName . "`";
+    $values[] = "'" . $safeValue . "'";
+    $updates[] = "`" . $columnName . "` = '" . $safeValue . "'";
+}
+
+function influencerRequiredColumn($connect, $columnName, $value, &$columns, &$values, &$updates)
+{
     $safeValue = $connect->real_escape_string((string) $value);
     $columns[] = "`" . $columnName . "`";
     $values[] = "'" . $safeValue . "'";
@@ -90,22 +110,34 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     influencerResponse(false, 'Only POST requests are allowed.');
 }
 
-$name = influencerSqlValue($conn, 'name');
-$channelLink = influencerSqlValue($conn, 'channel_link');
-$phone = influencerSqlValue($conn, 'phone');
-$email = influencerSqlValue($conn, 'email');
-$mediaKit = influencerSqlValue($conn, 'media_kit');
-$reelCost = influencerSqlValue($conn, 'reel_cost');
-$pastCollabs = influencerSqlValue($conn, 'past_collabs');
+$nameRaw = influencerLimitText(influencerPostValue('name'), 300);
+$channelLinkRaw = influencerLimitText(influencerPostValue('channel_link'), 250);
+$phoneRaw = influencerLimitText(influencerPostValue('phone'), 100);
+$emailRaw = influencerLimitText(influencerPostValue('email'), 255);
+$mediaKitRaw = influencerLimitText(influencerPostValue('media_kit'), 250);
+$reelCostRaw = influencerLimitText(influencerPostValue('reel_cost'), 100);
+$pastCollabsRaw = influencerPostValue('past_collabs');
+$verticalsRaw = isset($_POST['verticals']) && is_array($_POST['verticals'])
+    ? implode(', ', array_map('trim', $_POST['verticals']))
+    : influencerPostValue('verticals');
+$verticalsRaw = influencerLimitText($verticalsRaw, 1000);
+
+$name = $conn->real_escape_string($nameRaw);
+$channelLink = $conn->real_escape_string($channelLinkRaw);
+$phone = $conn->real_escape_string($phoneRaw);
+$email = $conn->real_escape_string($emailRaw);
+$mediaKit = $conn->real_escape_string($mediaKitRaw);
+$reelCost = $conn->real_escape_string($reelCostRaw);
+$pastCollabs = $conn->real_escape_string($pastCollabsRaw);
 $verticals = isset($_POST['verticals']) && is_array($_POST['verticals'])
-    ? $conn->real_escape_string(implode(', ', array_map('trim', $_POST['verticals'])))
-    : influencerSqlValue($conn, 'verticals');
+    ? $conn->real_escape_string($verticalsRaw)
+    : $conn->real_escape_string($verticalsRaw);
 
 if ($name === '' || $channelLink === '' || $phone === '' || $email === '' || $verticals === '' || $reelCost === '') {
     influencerResponse(false, 'Please fill all required fields.');
 }
 
-if (!filter_var(stripslashes($email), FILTER_VALIDATE_EMAIL)) {
+if (!filter_var($emailRaw, FILTER_VALIDATE_EMAIL)) {
     influencerResponse(false, 'Please enter a valid email address.');
 }
 
@@ -115,56 +147,36 @@ $source = 30;
 $roles = '23';
 $ainfo = $conn->real_escape_string(
     "Influencer lead\n" .
-    "Channel / Handle: " . stripslashes($channelLink) . "\n" .
-    "Preferred verticals: " . stripslashes($verticals) . "\n" .
-    "Media kit / portfolio: " . stripslashes($mediaKit) . "\n" .
-    "Ball park cost per reel: " . stripslashes($reelCost) . "\n" .
-    "Past brand collaborations: " . stripslashes($pastCollabs)
+    "Channel / Handle: " . $channelLinkRaw . "\n" .
+    "Preferred verticals: " . $verticalsRaw . "\n" .
+    "Media kit / portfolio: " . $mediaKitRaw . "\n" .
+    "Ball park cost per reel: " . $reelCostRaw . "\n" .
+    "Past brand collaborations: " . $pastCollabsRaw
 );
 
-$columns = array(
-    '`name`',
-    '`website`',
-    '`dateadded`',
-    '`status`',
-    '`source`',
-    '`email`',
-    '`phonenumber`',
-    '`skillset`',
-    '`ainfo`',
-    '`roles`',
-    '`portfolio`'
-);
-$values = array(
-    "'" . $name . "'",
-    "'" . $channelLink . "'",
-    "'" . $date . "'",
-    "'" . $status . "'",
-    "'" . $source . "'",
-    "'" . $email . "'",
-    "'" . $phone . "'",
-    "'" . $verticals . "'",
-    "'" . $ainfo . "'",
-    "'" . $roles . "'",
-    "'" . $mediaKit . "'"
-);
-$updates = array(
-    "`name` = '" . $name . "'",
-    "`website` = '" . $channelLink . "'",
-    "`phonenumber` = '" . $phone . "'",
-    "`skillset` = '" . $verticals . "'",
-    "`ainfo` = '" . $ainfo . "'",
-    "`roles` = '" . $roles . "'",
-    "`portfolio` = '" . $mediaKit . "'",
-    "`modified` = '" . $date . "'"
-);
+$columns = array();
+$values = array();
+$updates = array();
+
+influencerRequiredColumn($conn, 'name', $nameRaw, $columns, $values, $updates);
+influencerMaybeColumn($conn, 'website', $channelLinkRaw, $columns, $values, $updates);
+influencerRequiredColumn($conn, 'dateadded', $date, $columns, $values, $updates);
+influencerRequiredColumn($conn, 'status', $status, $columns, $values, $updates);
+influencerRequiredColumn($conn, 'source', $source, $columns, $values, $updates);
+influencerRequiredColumn($conn, 'email', $emailRaw, $columns, $values, $updates);
+influencerRequiredColumn($conn, 'phonenumber', $phoneRaw, $columns, $values, $updates);
+influencerMaybeColumn($conn, 'skillset', $verticalsRaw, $columns, $values, $updates);
+influencerMaybeColumn($conn, 'ainfo', "Influencer lead\nChannel / Handle: " . $channelLinkRaw . "\nPreferred verticals: " . $verticalsRaw . "\nMedia kit / portfolio: " . $mediaKitRaw . "\nBall park cost per reel: " . $reelCostRaw . "\nPast brand collaborations: " . $pastCollabsRaw, $columns, $values, $updates);
+influencerMaybeColumn($conn, 'roles', $roles, $columns, $values, $updates);
+influencerMaybeColumn($conn, 'portfolio', $mediaKitRaw, $columns, $values, $updates);
+influencerMaybeColumn($conn, 'modified', $date, $columns, $values, $updates);
 
 influencerMaybeColumn($conn, 'leadtype', 'influencer', $columns, $values, $updates);
-influencerMaybeColumn($conn, 'influencer_channel_link', stripslashes($channelLink), $columns, $values, $updates);
-influencerMaybeColumn($conn, 'influencer_verticals', stripslashes($verticals), $columns, $values, $updates);
-influencerMaybeColumn($conn, 'influencer_media_kit', stripslashes($mediaKit), $columns, $values, $updates);
-influencerMaybeColumn($conn, 'influencer_reel_cost', stripslashes($reelCost), $columns, $values, $updates);
-influencerMaybeColumn($conn, 'influencer_brand_collabs', stripslashes($pastCollabs), $columns, $values, $updates);
+influencerMaybeColumn($conn, 'influencer_channel_link', $channelLinkRaw, $columns, $values, $updates);
+influencerMaybeColumn($conn, 'influencer_verticals', $verticalsRaw, $columns, $values, $updates);
+influencerMaybeColumn($conn, 'influencer_media_kit', $mediaKitRaw, $columns, $values, $updates);
+influencerMaybeColumn($conn, 'influencer_reel_cost', $reelCostRaw, $columns, $values, $updates);
+influencerMaybeColumn($conn, 'influencer_brand_collabs', $pastCollabsRaw, $columns, $values, $updates);
 
 $emailCheck = $conn->query("SELECT id FROM tblleads WHERE email = '" . $email . "' LIMIT 1");
 $existingLead = $emailCheck ? $emailCheck->fetch_assoc() : null;
@@ -198,7 +210,7 @@ $candidateBody = "Hey " . stripslashes($name) . ",<br><br>Thank you for sharing 
 if ($conn->query($sql) === true) {
     if (function_exists('SendMailHTML')) {
         SendMailHTML('careers@digichefs.com', $internalSubject, $mailBody, '', '');
-        SendMailHTML(stripslashes($email), 'DigiChefs || Influencer profile received', $candidateBody, '', '');
+        SendMailHTML($emailRaw, 'DigiChefs || Influencer profile received', $candidateBody, '', '');
     }
 
     influencerResponse(true, 'Thank you! We have received your influencer profile.');
