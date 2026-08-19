@@ -33,8 +33,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-require_once __DIR__ . '/../mail/lib.php';
 require_once __DIR__ . '/../includes/dbcon.php';
+
+if (!isset($conn) && isset($connect)) {
+    $conn = $connect;
+}
 
 function influencerPostValue($key)
 {
@@ -104,6 +107,10 @@ function influencerResponse($success, $message)
         'messages' => $message
     ), JSON_UNESCAPED_SLASHES);
     exit;
+}
+
+if (!isset($conn) || !($conn instanceof mysqli)) {
+    influencerResponse(false, 'Something went wrong while submitting the form. Please try again.');
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
