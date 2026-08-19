@@ -358,7 +358,7 @@
                         }
 
                         $.ajax({
-                            url: 'php_actions/createinfluencerweb.php',
+                            url: 'https://digichefs.in/newhr/php_actions/createinfluencerweb.php',
                             type: 'POST',
                             data: $(form).serialize(),
                             dataType: 'json',
