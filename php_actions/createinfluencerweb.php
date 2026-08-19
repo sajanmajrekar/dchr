@@ -24,7 +24,7 @@ register_shutdown_function(function () {
 
     echo json_encode(array(
         'success' => false,
-        'messages' => 'Server error while submitting influencer details. ' . $error['message']
+        'messages' => 'Something went wrong while submitting the form. Please try again.'
     ), JSON_UNESCAPED_SLASHES);
 });
 
@@ -204,5 +204,5 @@ if ($conn->query($sql) === true) {
     influencerResponse(true, 'Thank you! We have received your influencer profile.');
 }
 
-influencerResponse(false, 'Error while saving influencer details: ' . $conn->error);
+influencerResponse(false, 'Something went wrong while submitting the form. Please try again.');
 ?>
