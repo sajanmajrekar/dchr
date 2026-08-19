@@ -149,6 +149,7 @@ if($_POST) {
 	$refer = addslashes($_POST['refer']);
 	$info = '';
 	$portfolio_link = isset($_POST['portfolio']) ? addslashes($_POST['portfolio']) : '';
+	$joining_date = isset($_POST['joining_date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_POST['joining_date']) ? addslashes($_POST['joining_date']) : '';
 	$selectedOption = "";
 	
 	if(isset($_POST['example-chosen-multiple'])){
@@ -204,6 +205,11 @@ if($_POST) {
       <td style="font-weight:bold;color:#000;padding:15px 10px;border-bottom:dotted 1px #cccccc">:</td>
       <td style="color:#000;padding:15px 10px;border-bottom:dotted 1px #cccccc">' . $willing_to_relocate . '</td>
     </tr>
+    <tr>
+      <td width="100" style="font-weight:bold;color:#000;padding:15px 10px;border-bottom:dotted 1px #cccccc">Tentative Joining Date</td>
+      <td style="font-weight:bold;color:#000;padding:15px 10px;border-bottom:dotted 1px #cccccc">:</td>
+      <td style="color:#000;padding:15px 10px;border-bottom:dotted 1px #cccccc">' . ($joining_date !== '' ? $joining_date : 'Not provided') . '</td>
+    </tr>
    <tr>
       <td width="100" colspan="3" style="font-weight:bold;color:#000;padding:15px 10px;border-top: 1px solid #ccc;">Check the CRM for more details.</td>
     </tr>
@@ -253,7 +259,7 @@ HR team";
 		if(in_array($type, array('docx', 'doc', 'pdf', 'rtf', 'DOCX', 'DOC', 'PDF', 'RTF'))) {
 		    if(is_uploaded_file($_FILES['example-file-input']['tmp_name'])) {
 		         if(move_uploaded_file($_FILES['example-file-input']['tmp_name'], $url)) {
-					$sql ="INSERT INTO `tblleads`(`name`, `country`, `zip`, `city`, `street`,`dateadded`, `status`, `source`, `willing_to_relocate`, `email`, `phonenumber`, `experiance`, `qualification`, `cjtitle`, `cemployer`, `esalary`, `csalary`, `skillset`, `ainfo`, `roles`, `nperiod`, `resume`,`referral`,`portfolio`) VALUES ('$name','$country','$pincode','$city','$street','$date','20','$source','$willing_to_relocate','$email','$phone','$experience','$qualification','$cjob','$cemployer','$expected','$csalary','$skillset','$info','$selectedOption','$nperiod','$img_name','$refer','$portfolio_link')";
+					$sql ="INSERT INTO `tblleads`(`name`, `country`, `zip`, `city`, `street`,`dateadded`, `status`, `source`, `willing_to_relocate`, `email`, `phonenumber`, `experiance`, `qualification`, `cjtitle`, `cemployer`, `esalary`, `csalary`, `skillset`, `ainfo`, `roles`, `nperiod`, `resume`,`referral`,`portfolio`,`joining_date`) VALUES ('$name','$country','$pincode','$city','$street','$date','20','$source','$willing_to_relocate','$email','$phone','$experience','$qualification','$cjob','$cemployer','$expected','$csalary','$skillset','$info','$selectedOption','$nperiod','$img_name','$refer','$portfolio_link','$joining_date')";
 						if($connect->query($sql) === TRUE && SendMailHTML("careers@digichefs.com",'Digichefs || Job Enquiry received',$body,'',$url)) {
 							$valid['success'] = true;
 							$valid['messages'] = "Thank you! We have received your application at DigiChefs, We shall get back to you soon.";
@@ -269,7 +275,7 @@ HR team";
 				}
 			}
 		}else{
-			$sql ="INSERT INTO `tblleads`(`name`, `country`, `zip`, `city`, `street`,`dateadded`, `status`, `source`, `willing_to_relocate`, `email`, `phonenumber`, `experiance`, `qualification`, `cjtitle`, `cemployer`, `esalary`, `csalary`, `skillset`, `ainfo`, `roles`, `nperiod`, `resume`,`referral`,`portfolio`) VALUES ('$name','$country','$pincode','$city','$street','$date','20','$source','$willing_to_relocate','$email','$phone','$experience','$qualification','$cjob','$cemployer','$expected','$csalary','$skillset','$info','$selectedOption','$nperiod','$img_name','$refer','$portfolio_link')";
+			$sql ="INSERT INTO `tblleads`(`name`, `country`, `zip`, `city`, `street`,`dateadded`, `status`, `source`, `willing_to_relocate`, `email`, `phonenumber`, `experiance`, `qualification`, `cjtitle`, `cemployer`, `esalary`, `csalary`, `skillset`, `ainfo`, `roles`, `nperiod`, `resume`,`referral`,`portfolio`,`joining_date`) VALUES ('$name','$country','$pincode','$city','$street','$date','20','$source','$willing_to_relocate','$email','$phone','$experience','$qualification','$cjob','$cemployer','$expected','$csalary','$skillset','$info','$selectedOption','$nperiod','$img_name','$refer','$portfolio_link','$joining_date')";
 						if($connect->query($sql) === TRUE && SendMailHTML('careers@digichefs.com','Digichefs || Job Enquiry received',$body,'','')) {
 						    
 						    $valid['success'] = true;
@@ -300,7 +306,7 @@ HR team";
         }
 
         $finalResume = $connect->real_escape_string($finalResume);
-        $sql = "UPDATE tblleads SET name='$name', country='$country', zip='$pincode', city='$city', street='$street', source='$source', willing_to_relocate='$willing_to_relocate', email='$email', phonenumber='$phone', experiance='$experience', qualification='$qualification', cjtitle='$cjob', cemployer='$cemployer', esalary='$expected', csalary='$csalary', skillset='$skillset', ainfo='$info', roles='$selectedOption', nperiod='$nperiod', resume='$finalResume', referral='$refer', portfolio='$portfolio_link', modified='$date' WHERE id='$leadId'";
+        $sql = "UPDATE tblleads SET name='$name', country='$country', zip='$pincode', city='$city', street='$street', source='$source', willing_to_relocate='$willing_to_relocate', email='$email', phonenumber='$phone', experiance='$experience', qualification='$qualification', cjtitle='$cjob', cemployer='$cemployer', esalary='$expected', csalary='$csalary', skillset='$skillset', ainfo='$info', roles='$selectedOption', nperiod='$nperiod', resume='$finalResume', referral='$refer', portfolio='$portfolio_link', joining_date='$joining_date', modified='$date' WHERE id='$leadId'";
 
         if ($leadId > 0 && $connect->query($sql) === TRUE && SendMailHTML('careers@digichefs.com', 'Digichefs || Job Application updated', $body, '', $mailAttachment)) {
             $valid['success'] = true;
