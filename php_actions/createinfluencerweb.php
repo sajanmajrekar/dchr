@@ -1,15 +1,40 @@
 <?php
+ob_start();
+ini_set('display_errors', '0');
+
 header("Access-Control-Allow-Origin: https://digichefs.com");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, X-Requested-With");
+header("Content-Type: application/json; charset=utf-8");
+
+register_shutdown_function(function () {
+    $error = error_get_last();
+    if (!$error || !in_array($error['type'], array(E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR), true)) {
+        return;
+    }
+
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+
+    if (!headers_sent()) {
+        http_response_code(500);
+        header("Content-Type: application/json; charset=utf-8");
+    }
+
+    echo json_encode(array(
+        'success' => false,
+        'messages' => 'Server error while submitting influencer details. ' . $error['message']
+    ), JSON_UNESCAPED_SLASHES);
+});
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
 }
 
-include('../mail/lib.php');
-include("../includes/dbcon.php");
+require_once __DIR__ . '/../mail/lib.php';
+require_once __DIR__ . '/../includes/dbcon.php';
 
 function influencerPostValue($key)
 {
@@ -46,6 +71,14 @@ function influencerMaybeColumn($connect, $columnName, $value, &$columns, &$value
 
 function influencerResponse($success, $message)
 {
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+
+    if (!headers_sent()) {
+        header("Content-Type: application/json; charset=utf-8");
+    }
+
     echo json_encode(array(
         'success' => $success,
         'messages' => $message
@@ -163,8 +196,11 @@ $mailBody = '<table width="600" border="0" cellspacing="0" cellpadding="0" style
 $candidateBody = "Hey " . stripslashes($name) . ",<br><br>Thank you for sharing your influencer profile with DigiChefs. Our team will review your details and reach out if there is a relevant brand collaboration fit.<br><br>Regards,<br>Team DigiChefs";
 
 if ($conn->query($sql) === true) {
-    SendMailHTML('careers@digichefs.com', $internalSubject, $mailBody, '', '');
-    SendMailHTML(stripslashes($email), 'DigiChefs || Influencer profile received', $candidateBody, '', '');
+    if (function_exists('SendMailHTML')) {
+        SendMailHTML('careers@digichefs.com', $internalSubject, $mailBody, '', '');
+        SendMailHTML(stripslashes($email), 'DigiChefs || Influencer profile received', $candidateBody, '', '');
+    }
+
     influencerResponse(true, 'Thank you! We have received your influencer profile.');
 }
 

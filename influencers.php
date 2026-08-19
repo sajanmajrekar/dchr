@@ -371,8 +371,21 @@
                                     }
                                 }
                             },
-                            error: function () {
-                                alert('Something went wrong while submitting the form.');
+                            error: function (xhr, status, error) {
+                                var message = 'Something went wrong while submitting the form.';
+                                if (xhr && xhr.responseText) {
+                                    try {
+                                        var response = JSON.parse(xhr.responseText);
+                                        if (response && response.messages) {
+                                            message = response.messages;
+                                        }
+                                    } catch (e) {
+                                        message += '\n\nServer response: ' + xhr.responseText.substring(0, 300);
+                                    }
+                                } else if (error) {
+                                    message += '\n\n' + error;
+                                }
+                                alert(message);
                             }
                         });
                         return false;
