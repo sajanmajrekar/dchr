@@ -12,4 +12,3 @@ inc/local_config.php
 inc/config.php
 dist/
 frontend/
-form.php
