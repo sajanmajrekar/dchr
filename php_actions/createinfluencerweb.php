@@ -7,6 +7,10 @@ header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, X-Requested-With");
 header("Content-Type: application/json; charset=utf-8");
 
+if (function_exists('mysqli_report')) {
+    mysqli_report(MYSQLI_REPORT_OFF);
+}
+
 register_shutdown_function(function () {
     $error = error_get_last();
     if (!$error || !in_array($error['type'], array(E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR), true)) {
@@ -63,7 +67,15 @@ function influencerLimitText($value, $maxLength)
 
 function influencerColumnExists($connect, $columnName)
 {
-    $result = $connect->query("SHOW COLUMNS FROM tblleads LIKE '" . $connect->real_escape_string($columnName) . "'");
+    $result = false;
+    try {
+        $result = $connect->query("SHOW COLUMNS FROM tblleads LIKE '" . $connect->real_escape_string($columnName) . "'");
+    } catch (Throwable $e) {
+        return false;
+    } catch (Exception $e) {
+        return false;
+    }
+
     $exists = $result && $result->num_rows > 0;
     if ($result) {
         $result->free();
@@ -185,7 +197,14 @@ influencerMaybeColumn($conn, 'influencer_media_kit', $mediaKitRaw, $columns, $va
 influencerMaybeColumn($conn, 'influencer_reel_cost', $reelCostRaw, $columns, $values, $updates);
 influencerMaybeColumn($conn, 'influencer_brand_collabs', $pastCollabsRaw, $columns, $values, $updates);
 
-$emailCheck = $conn->query("SELECT id FROM tblleads WHERE email = '" . $email . "' LIMIT 1");
+$emailCheck = false;
+try {
+    $emailCheck = $conn->query("SELECT id FROM tblleads WHERE email = '" . $email . "' LIMIT 1");
+} catch (Throwable $e) {
+    $emailCheck = false;
+} catch (Exception $e) {
+    $emailCheck = false;
+}
 $existingLead = $emailCheck ? $emailCheck->fetch_assoc() : null;
 if ($emailCheck) {
     $emailCheck->free();
@@ -214,7 +233,16 @@ $mailBody = '<table width="600" border="0" cellspacing="0" cellpadding="0" style
 
 $candidateBody = "Hey " . stripslashes($name) . ",<br><br>Thank you for sharing your influencer profile with DigiChefs. Our team will review your details and reach out if there is a relevant brand collaboration fit.<br><br>Regards,<br>Team DigiChefs";
 
-if ($conn->query($sql) === true) {
+$saveOk = false;
+try {
+    $saveOk = $conn->query($sql) === true;
+} catch (Throwable $e) {
+    $saveOk = false;
+} catch (Exception $e) {
+    $saveOk = false;
+}
+
+if ($saveOk) {
     if (function_exists('SendMailHTML')) {
         SendMailHTML('careers@digichefs.com', $internalSubject, $mailBody, '', '');
         SendMailHTML($emailRaw, 'DigiChefs || Influencer profile received', $candidateBody, '', '');
