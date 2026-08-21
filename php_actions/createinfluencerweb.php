@@ -38,6 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once __DIR__ . '/../includes/dbcon.php';
+require_once __DIR__ . '/../mail/lib.php';
 
 if (!isset($conn) && isset($connect)) {
     $conn = $connect;

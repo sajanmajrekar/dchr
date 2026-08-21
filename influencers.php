@@ -21,6 +21,9 @@
         <link rel="stylesheet" href="css/plugins.css">
         <link rel="stylesheet" href="css/main.css">
         <link rel="stylesheet" href="css/themes.css">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
         <style type="text/css">
             .row.cta {
@@ -80,14 +83,6 @@
                 width: 100%;
                 height: 100%;
                 vertical-align: middle;
-            }
-            .chosen-container-multi.chosen-container .chosen-choices::after {
-                background: url("images/chosen-sprite.png") no-repeat 3px 4px;
-                width: 16px;
-                height: 100%;
-                content: " ";
-                position: absolute;
-                right: 0;
             }
             .lds-ellipsis {
                 position: relative;
@@ -191,6 +186,339 @@
                     width: 100%;
                 }
             }
+
+            /* Modern DigiChefs form refresh */
+            html,
+            body {
+                min-height: 100%;
+            }
+
+            body {
+                font-family: 'Open Sans', Arial, sans-serif !important;
+                background:
+                    linear-gradient(135deg, rgba(14, 18, 28, 0.66), rgba(236, 31, 36, 0.18)),
+                    url(https://digichefs.com/wp-content/uploads/2018/07/city.jpg) center/cover fixed no-repeat !important;
+                color: #172033;
+            }
+
+            .full-bg {
+                display: none;
+            }
+
+            #page-container,
+            #main-container {
+                min-height: 100vh;
+            }
+
+            #main-container {
+                padding: 34px 15px 70px;
+            }
+
+            .col-sm-12.col-md-10.col-md-offset-1.col-lg-8.col-lg-offset-2 > a {
+                display: block;
+                text-align: center;
+            }
+
+            .col-sm-12.col-md-10.col-md-offset-1.col-lg-8.col-lg-offset-2 > a img {
+                width: 174px;
+                max-width: 58%;
+                margin: 0 auto 22px !important;
+                padding: 14px 18px;
+                background: rgba(255, 255, 255, 0.96);
+                border: 1px solid rgba(255, 255, 255, 0.72);
+                border-radius: 22px;
+                box-shadow: 0 22px 58px rgba(8, 16, 32, 0.22);
+            }
+
+            .block {
+                overflow: hidden;
+                margin-top: 0 !important;
+                margin-bottom: 0;
+                background: rgba(255, 255, 255, 0.97);
+                border: 1px solid rgba(255, 255, 255, 0.75);
+                border-radius: 30px;
+                box-shadow: 0 30px 80px rgba(5, 12, 28, 0.32);
+                backdrop-filter: blur(12px);
+            }
+
+            .block-title {
+                position: relative;
+                padding: 34px 30px 32px;
+                border: 0;
+                background:
+                    radial-gradient(circle at 15% 15%, rgba(255,255,255,0.22), transparent 28%),
+                    linear-gradient(135deg, #ec1f24 0%, #f36f22 48%, #ecb131 100%);
+            }
+
+            .block-title:after {
+                content: "";
+                position: absolute;
+                right: -72px;
+                bottom: -90px;
+                width: 220px;
+                height: 220px;
+                border-radius: 999px;
+                background: rgba(255, 255, 255, 0.17);
+            }
+
+            .block-title h1 {
+                position: relative;
+                z-index: 1;
+                margin: 0;
+                color: #fff;
+                font-family: 'Open Sans', Arial, sans-serif;
+                font-size: 34px;
+                font-weight: 800;
+                letter-spacing: -0.8px;
+                line-height: 1.2;
+            }
+
+            .form-intro {
+                max-width: 720px;
+                margin: 24px auto 2px;
+                padding: 0 28px;
+                color: #687386;
+                font-family: 'Open Sans', Arial, sans-serif;
+                font-size: 15px;
+                line-height: 1.7;
+                text-align: center;
+            }
+
+            .form-horizontal.form-bordered {
+                padding: 18px 34px 34px;
+            }
+
+            .form-bordered .form-group {
+                display: block;
+                margin: 0;
+                padding: 18px 0;
+                border: 0;
+                border-bottom: 1px solid #eef2f7;
+            }
+
+            .form-bordered .form-group:before,
+            .form-bordered .form-group:after {
+                display: none;
+            }
+
+            .form-bordered .form-group:last-child,
+            .form-bordered .form-actions {
+                border-bottom: 0;
+            }
+
+            .form-bordered .form-group > .control-label {
+                display: block;
+                width: 100%;
+                max-width: 100%;
+                float: none;
+            }
+
+            .form-bordered .form-group > div:not(.help-block) {
+                width: 100%;
+                max-width: 100%;
+                float: none;
+                padding-left: 0;
+                padding-right: 0;
+            }
+
+            .form-bordered .form-group.form-actions > div {
+                max-width: 100%;
+            }
+
+            .control-label {
+                padding-top: 0 !important;
+                margin-bottom: 9px;
+                color: #172033;
+                font-family: 'Open Sans', Arial, sans-serif;
+                font-size: 14px;
+                font-weight: 800;
+                letter-spacing: -0.1px;
+                text-align: left !important;
+            }
+
+            .text-danger {
+                color: #ec1f24 !important;
+            }
+
+            .form-control,
+            select.form-control,
+            textarea.form-control {
+                min-height: 50px;
+                border: 1px solid #dfe7f2;
+                border-radius: 16px;
+                background: #fbfcff;
+                color: #1f2a44;
+                box-shadow: none;
+                font-family: 'Open Sans', Arial, sans-serif;
+                font-size: 15px;
+                transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+            }
+
+            textarea.form-control {
+                min-height: 118px;
+                resize: vertical;
+            }
+
+            .form-control:focus,
+            select.form-control:focus,
+            textarea.form-control:focus {
+                border-color: #ec1f24;
+                background: #fff;
+                box-shadow: 0 0 0 4px rgba(236, 31, 36, 0.10);
+            }
+
+            .vertical-checkbox-grid {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+            }
+
+            .vertical-option {
+                position: relative;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                min-height: 48px;
+                padding: 12px 14px;
+                border: 1px solid #dfe7f2;
+                border-radius: 16px;
+                background: #fbfcff;
+                color: #1f2a44;
+                cursor: pointer;
+                font-family: 'Open Sans', Arial, sans-serif;
+                font-size: 14px;
+                font-weight: 700;
+                transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease, background .2s ease;
+            }
+
+            .vertical-option:hover {
+                border-color: rgba(236, 31, 36, 0.45);
+                background: #fff;
+                box-shadow: 0 10px 24px rgba(17, 24, 39, 0.08);
+                transform: translateY(-1px);
+            }
+
+            .vertical-option input {
+                position: absolute;
+                opacity: 0;
+                pointer-events: none;
+            }
+
+            .vertical-option span:before {
+                content: "";
+                display: inline-block;
+                width: 18px;
+                height: 18px;
+                margin-right: 9px;
+                vertical-align: -4px;
+                border: 2px solid #cbd5e1;
+                border-radius: 6px;
+                background: #fff;
+                transition: all .2s ease;
+            }
+
+            .vertical-option input:checked + span:before {
+                border-color: #ec1f24;
+                background:
+                    linear-gradient(135deg, #ec1f24, #ecb131);
+                box-shadow: inset 0 0 0 3px #fff;
+            }
+
+            .vertical-option:has(input:checked) {
+                border-color: rgba(236, 31, 36, 0.45);
+                background: #fff7ed;
+                box-shadow: 0 12px 26px rgba(236, 31, 36, 0.12);
+            }
+
+            .vertical-count {
+                display: none;
+                margin-top: 10px;
+                color: #7b8798;
+                font-size: 13px;
+                font-weight: 800;
+            }
+
+            .vertical-count.is-visible {
+                display: block;
+                color: #ec1f24;
+            }
+
+            .help-block {
+                color: #7b8798;
+                font-size: 13px;
+            }
+
+            .form-actions {
+                padding-top: 28px !important;
+                background: transparent !important;
+            }
+
+            .btn-submit {
+                min-width: 184px;
+                padding: 12px 34px !important;
+                border: 0 !important;
+                border-radius: 999px !important;
+                background-image: linear-gradient(135deg, #ec1f24 0%, #f36f22 48%, #ecb131 100%) !important;
+                color: #fff !important;
+                font-family: 'Open Sans', Arial, sans-serif;
+                font-size: 17px !important;
+                font-weight: 800 !important;
+                letter-spacing: 0.1px;
+                box-shadow: 0 16px 34px rgba(236, 31, 36, 0.26);
+            }
+
+            .btn-submit:hover,
+            .btn-submit:focus {
+                transform: translateY(-2px);
+                box-shadow: 0 20px 42px rgba(236, 31, 36, 0.34) !important;
+            }
+
+            @media(max-width:767px) {
+                #main-container {
+                    padding: 20px 10px 46px;
+                }
+
+                .block {
+                    border-radius: 22px;
+                }
+
+                .block-title {
+                    padding: 28px 18px 26px;
+                }
+
+                .block-title h1 {
+                    font-size: 26px;
+                }
+
+                .form-intro {
+                    margin-top: 18px;
+                    padding: 0 18px;
+                }
+
+                .form-horizontal.form-bordered {
+                    padding: 8px 18px 26px;
+                }
+
+                .form-bordered .form-group {
+                    display: block;
+                    padding: 15px 0;
+                }
+
+                .control-label {
+                    padding-top: 0 !important;
+                    margin-bottom: 8px;
+                }
+
+                .form-bordered .form-group > .control-label,
+                .form-bordered .form-group > div:not(.help-block) {
+                    max-width: 100%;
+                    width: 100%;
+                }
+
+                .vertical-checkbox-grid {
+                    grid-template-columns: 1fr;
+                }
+            }
         </style>
 
         <script src="js/vendor/modernizr-3.3.1.min.js"></script>
@@ -253,24 +581,26 @@
                                     <div class="form-group">
                                         <label class="col-md-5 control-label" for="verticals">Preferred business verticals to work with<span class="text-danger">*</span></label>
                                         <div class="col-md-6">
-                                            <select id="verticals" name="verticals[]" class="mselect form-control" multiple required data-placeholder="Select preferred verticals">
-                                                <option value="Pharma & Healthcare">Pharma & Healthcare</option>
-                                                <option value="Beauty / Skin & Body Care">Beauty / Skin & Body Care</option>
-                                                <option value="Real Estate">Real Estate</option>
-                                                <option value="Food & FMCG">Food & FMCG</option>
-                                                <option value="Automobile">Automobile</option>
-                                                <option value="BFSI / FinTech">BFSI / FinTech</option>
-                                                <option value="Education">Education</option>
-                                                <option value="Lifestyle & Entertainment">Lifestyle & Entertainment</option>
-                                                <option value="B2B / Manufacturing">B2B / Manufacturing</option>
-                                                <option value="B2B Services / Consulting / SAAS">B2B Services / Consulting / SAAS</option>
-                                                <option value="Personalities">Personalities</option>
-                                                <option value="FnB">FnB</option>
-                                                <option value="Travel & Hospitality">Travel & Hospitality</option>
-                                                <option value="Shipping & Logistics">Shipping & Logistics</option>
-                                                <option value="Community Welfare">Community Welfare</option>
-                                                <option value="Consumer Electronics">Consumer Electronics</option>
-                                            </select>
+                                            <div id="verticals" class="vertical-checkbox-grid">
+                                                <label class="vertical-option"><input type="checkbox" name="verticals[]" value="Pharma & Healthcare"><span>Pharma & Healthcare</span></label>
+                                                <label class="vertical-option"><input type="checkbox" name="verticals[]" value="Beauty / Skin & Body Care"><span>Beauty / Skin & Body Care</span></label>
+                                                <label class="vertical-option"><input type="checkbox" name="verticals[]" value="Real Estate"><span>Real Estate</span></label>
+                                                <label class="vertical-option"><input type="checkbox" name="verticals[]" value="Food & FMCG"><span>Food & FMCG</span></label>
+                                                <label class="vertical-option"><input type="checkbox" name="verticals[]" value="Automobile"><span>Automobile</span></label>
+                                                <label class="vertical-option"><input type="checkbox" name="verticals[]" value="BFSI / FinTech"><span>BFSI / FinTech</span></label>
+                                                <label class="vertical-option"><input type="checkbox" name="verticals[]" value="Education"><span>Education</span></label>
+                                                <label class="vertical-option"><input type="checkbox" name="verticals[]" value="Lifestyle & Entertainment"><span>Lifestyle & Entertainment</span></label>
+                                                <label class="vertical-option"><input type="checkbox" name="verticals[]" value="B2B / Manufacturing"><span>B2B / Manufacturing</span></label>
+                                                <label class="vertical-option"><input type="checkbox" name="verticals[]" value="B2B Services / Consulting / SAAS"><span>B2B Services / Consulting / SAAS</span></label>
+                                                <label class="vertical-option"><input type="checkbox" name="verticals[]" value="Personalities"><span>Personalities</span></label>
+                                                <label class="vertical-option"><input type="checkbox" name="verticals[]" value="FnB"><span>FnB</span></label>
+                                                <label class="vertical-option"><input type="checkbox" name="verticals[]" value="Travel & Hospitality"><span>Travel & Hospitality</span></label>
+                                                <label class="vertical-option"><input type="checkbox" name="verticals[]" value="Shipping & Logistics"><span>Shipping & Logistics</span></label>
+                                                <label class="vertical-option"><input type="checkbox" name="verticals[]" value="Community Welfare"><span>Community Welfare</span></label>
+                                                <label class="vertical-option"><input type="checkbox" name="verticals[]" value="Consumer Electronics"><span>Consumer Electronics</span></label>
+                                                <label class="vertical-option"><input type="checkbox" name="verticals[]" value="Other"><span>Other</span></label>
+                                            </div>
+                                            <div id="vertical-count" class="vertical-count"></div>
                                         </div>
                                     </div>
 
@@ -284,7 +614,7 @@
                                     <div class="form-group">
                                         <label class="col-md-5 control-label" for="reel_cost">Ball park cost per reel up to 60 seconds<span class="text-danger">*</span></label>
                                         <div class="col-md-6">
-                                            <input type="text" id="reel_cost" name="reel_cost" class="form-control" placeholder="Example: 25000" required>
+                                            <input type="text" id="reel_cost" name="reel_cost" class="form-control" placeholder="Example: 5000" required>
                                             <span class="help-block">Indicative number only. Final budget expectations will be discussed on call.</span>
                                         </div>
                                     </div>
@@ -334,9 +664,19 @@
             });
 
             $(function () {
-                if ($.fn.chosen) {
-                    $('.mselect').chosen({ width: '100%' });
+                function updateVerticalChoiceLabel() {
+                    var selectedCount = $('input[name="verticals[]"]:checked').length;
+                    var $count = $('#vertical-count');
+
+                    if (selectedCount > 0) {
+                        $count.text(selectedCount + ' item' + (selectedCount === 1 ? '' : 's') + ' selected').addClass('is-visible');
+                    } else {
+                        $count.text('').removeClass('is-visible');
+                    }
                 }
+
+                $('input[name="verticals[]"]').on('change', updateVerticalChoiceLabel);
+                updateVerticalChoiceLabel();
 
                 $('#influencer-form').validate({
                     errorClass: 'help-block animation-pullUp',
@@ -352,7 +692,7 @@
                         element.closest('.help-block').remove();
                     },
                     submitHandler: function (form) {
-                        if (!$('#verticals').val() || $('#verticals').val().length === 0) {
+                        if ($('input[name="verticals[]"]:checked').length === 0) {
                             alert('Please select at least one preferred business vertical.');
                             return false;
                         }
@@ -366,9 +706,8 @@
                                 alert(response.messages || 'Thank you! Your details have been submitted.');
                                 if (response.success) {
                                     form.reset();
-                                    if ($.fn.chosen) {
-                                        $('.mselect').val('').trigger('chosen:updated');
-                                    }
+                                    $('input[name="verticals[]"]').prop('checked', false);
+                                    updateVerticalChoiceLabel();
                                 }
                             },
                             error: function () {
