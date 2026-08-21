@@ -473,6 +473,74 @@
                 box-shadow: 0 20px 42px rgba(236, 31, 36, 0.34) !important;
             }
 
+            .thankyou-modal {
+                position: fixed;
+                inset: 0;
+                z-index: 100000;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                padding: 24px;
+                background: rgba(9, 14, 25, 0.62);
+            }
+
+            .thankyou-modal.is-visible {
+                display: flex;
+            }
+
+            .thankyou-card {
+                width: min(440px, 100%);
+                overflow: hidden;
+                border-radius: 28px;
+                background: #fff;
+                box-shadow: 0 30px 90px rgba(5, 12, 28, 0.42);
+                text-align: center;
+                font-family: 'Open Sans', Arial, sans-serif;
+            }
+
+            .thankyou-card-header {
+                padding: 30px 24px;
+                background: linear-gradient(135deg, #ec1f24 0%, #f36f22 48%, #ecb131 100%);
+                color: #fff;
+            }
+
+            .thankyou-icon {
+                width: 58px;
+                height: 58px;
+                margin: 0 auto 12px;
+                border-radius: 999px;
+                background: rgba(255, 255, 255, 0.24);
+                color: #fff;
+                font-size: 34px;
+                font-weight: 800;
+                line-height: 58px;
+            }
+
+            .thankyou-card h2 {
+                margin: 0;
+                font-size: 28px;
+                font-weight: 800;
+                letter-spacing: -0.6px;
+            }
+
+            .thankyou-card p {
+                margin: 0;
+                padding: 24px 30px 6px;
+                color: #5f6b7d;
+                font-size: 15px;
+                line-height: 1.7;
+            }
+
+            .thankyou-close {
+                margin: 18px auto 28px;
+                padding: 11px 30px;
+                border: 0;
+                border-radius: 999px;
+                background: #172033;
+                color: #fff;
+                font-weight: 800;
+            }
+
             @media(max-width:767px) {
                 #main-container {
                     padding: 20px 10px 46px;
@@ -648,6 +716,17 @@
             </div>
         </div>
 
+        <div id="thankyou-modal" class="thankyou-modal" aria-hidden="true">
+            <div class="thankyou-card" role="dialog" aria-modal="true" aria-labelledby="thankyou-title">
+                <div class="thankyou-card-header">
+                    <div class="thankyou-icon">&#10003;</div>
+                    <h2 id="thankyou-title">Thank you!</h2>
+                </div>
+                <p id="thankyou-message">Your details have been submitted successfully.</p>
+                <button type="button" class="thankyou-close">Close</button>
+            </div>
+        </div>
+
         <script src="js/vendor/jquery-2.2.4.min.js"></script>
         <script src="js/vendor/bootstrap.min.js"></script>
         <script src="js/plugins.js"></script>
@@ -664,6 +743,19 @@
             });
 
             $(function () {
+                function showThankYouPopup(message) {
+                    $('#thankyou-message').text(message || 'Your details have been submitted successfully.');
+                    $('#thankyou-modal').addClass('is-visible').attr('aria-hidden', 'false');
+                }
+
+                $('.thankyou-close, #thankyou-modal').on('click', function (event) {
+                    if (event.target !== this) {
+                        return;
+                    }
+
+                    $('#thankyou-modal').removeClass('is-visible').attr('aria-hidden', 'true');
+                });
+
                 function updateVerticalChoiceLabel() {
                     var selectedCount = $('input[name="verticals[]"]:checked').length;
                     var $count = $('#vertical-count');
@@ -703,11 +795,13 @@
                             data: $(form).serialize(),
                             dataType: 'json',
                             success: function (response) {
-                                alert(response.messages || 'Thank you! Your details have been submitted.');
                                 if (response.success) {
                                     form.reset();
                                     $('input[name="verticals[]"]').prop('checked', false);
                                     updateVerticalChoiceLabel();
+                                    showThankYouPopup(response.messages || 'Thank you! Your influencer profile has been submitted successfully.');
+                                } else {
+                                    alert(response.messages || 'Something went wrong while submitting the form. Please try again.');
                                 }
                             },
                             error: function () {

@@ -476,6 +476,67 @@ input[type="file"] {
     color: #ec1f24;
 }
 
+.relocate-radio-group {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.relocate-option {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 48px;
+    padding: 12px 14px;
+    border: 1px solid #dfe7f2;
+    border-radius: 16px;
+    background: #fbfcff;
+    color: #1f2a44;
+    cursor: pointer;
+    font-family: 'Open Sans', Arial, sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease, background .2s ease;
+}
+
+.relocate-option:hover {
+    border-color: rgba(236, 31, 36, 0.45);
+    background: #fff;
+    box-shadow: 0 10px 24px rgba(17, 24, 39, 0.08);
+    transform: translateY(-1px);
+}
+
+.relocate-option input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.relocate-option span:before {
+    content: "";
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    margin-right: 9px;
+    vertical-align: -4px;
+    border: 2px solid #cbd5e1;
+    border-radius: 999px;
+    background: #fff;
+    transition: all .2s ease;
+}
+
+.relocate-option input:checked + span:before {
+    border-color: #ec1f24;
+    background: linear-gradient(135deg, #ec1f24, #ecb131);
+    box-shadow: inset 0 0 0 4px #fff;
+}
+
+.relocate-option:has(input:checked) {
+    border-color: rgba(236, 31, 36, 0.45);
+    background: #fff7ed;
+    box-shadow: 0 12px 26px rgba(236, 31, 36, 0.12);
+}
+
 .help-block {
     color: #7b8798;
     font-size: 13px;
@@ -504,6 +565,74 @@ input[type="file"] {
 .btn-submit:focus {
     transform: translateY(-2px);
     box-shadow: 0 20px 42px rgba(236, 31, 36, 0.34) !important;
+}
+
+.thankyou-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(9, 14, 25, 0.62);
+}
+
+.thankyou-modal.is-visible {
+    display: flex;
+}
+
+.thankyou-card {
+    width: min(440px, 100%);
+    overflow: hidden;
+    border-radius: 28px;
+    background: #fff;
+    box-shadow: 0 30px 90px rgba(5, 12, 28, 0.42);
+    text-align: center;
+    font-family: 'Open Sans', Arial, sans-serif;
+}
+
+.thankyou-card-header {
+    padding: 30px 24px;
+    background: linear-gradient(135deg, #ec1f24 0%, #f36f22 48%, #ecb131 100%);
+    color: #fff;
+}
+
+.thankyou-icon {
+    width: 58px;
+    height: 58px;
+    margin: 0 auto 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.24);
+    color: #fff;
+    font-size: 34px;
+    font-weight: 800;
+    line-height: 58px;
+}
+
+.thankyou-card h2 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.6px;
+}
+
+.thankyou-card p {
+    margin: 0;
+    padding: 24px 30px 6px;
+    color: #5f6b7d;
+    font-size: 15px;
+    line-height: 1.7;
+}
+
+.thankyou-close {
+    margin: 18px auto 28px;
+    padding: 11px 30px;
+    border: 0;
+    border-radius: 999px;
+    background: #172033;
+    color: #fff;
+    font-weight: 800;
 }
 
 @media(max-width:767px) {
@@ -549,6 +678,10 @@ input[type="file"] {
     }
 
     .role-checkbox-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .relocate-radio-group {
         grid-template-columns: 1fr;
     }
 }
@@ -689,7 +822,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <select id="experience_select" class="form-control" required>
             <option value="">Please select</option>
             <option value="10">Less than 1 year</option>
-            <option value="12">1 year</option>
             <option value="24">1-2 years</option>
             <option value="36">2-3 years</option>
             <option value="48">3-4 years</option>
@@ -734,14 +866,18 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                                             </div>
                                         </div>
 										<div class="form-group">
-                                            <label class="col-md-5 control-label" for="source">Willing to Relocate (if currently out of Mumbai)</label>
+                                            <label class="col-md-5 control-label" for="willing_to_relocate_yes">Willing to Relocate (if currently out of Mumbai)</label>
                                             <div class="col-md-6">
-                                                <!--<select id="source" name="source" class="form-control" size="1">-->
-<select id="willing_to_relocate" name="willing_to_relocate" class="form-control" size="1">
-    <option value="" selected>Please select</option>
-    <option value="Yes">Yes</option>
-    <option value="No">No</option>
-</select>
+                                                <div class="relocate-radio-group">
+                                                    <label class="relocate-option" for="willing_to_relocate_yes">
+                                                        <input type="radio" id="willing_to_relocate_yes" name="willing_to_relocate" value="Yes">
+                                                        <span>Yes</span>
+                                                    </label>
+                                                    <label class="relocate-option" for="willing_to_relocate_no">
+                                                        <input type="radio" id="willing_to_relocate_no" name="willing_to_relocate" value="No">
+                                                        <span>No</span>
+                                                    </label>
+                                                </div>
                                             </div>
                                         </div>
                                         <div class="form-group">
@@ -824,6 +960,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 	</div>
 	</div>
 </div>
+        <div id="thankyou-modal" class="thankyou-modal" aria-hidden="true">
+            <div class="thankyou-card" role="dialog" aria-modal="true" aria-labelledby="thankyou-title">
+                <div class="thankyou-card-header">
+                    <div class="thankyou-icon">&#10003;</div>
+                    <h2 id="thankyou-title">Thank you!</h2>
+                </div>
+                <p id="thankyou-message">Your application has been submitted successfully.</p>
+                <button type="button" class="thankyou-close">Close</button>
+            </div>
+        </div>
         <!-- jQuery, Bootstrap, jQuery plugins and Custom JS code -->
         <script src="js/vendor/jquery-2.2.4.min.js"></script>
         <script src="js/vendor/bootstrap.min.js"></script>
@@ -855,6 +1001,19 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             $(function(){
                 FormsValidation.init();
 
+                function showThankYouPopup(message) {
+                    $('#thankyou-message').text(message || 'Your application has been submitted successfully.');
+                    $('#thankyou-modal').addClass('is-visible').attr('aria-hidden', 'false');
+                }
+
+                $('.thankyou-close, #thankyou-modal').on('click', function (event) {
+                    if (event.target !== this) {
+                        return;
+                    }
+
+                    $('#thankyou-modal').removeClass('is-visible').attr('aria-hidden', 'true');
+                });
+
                 function updateRoleChoiceLabel() {
                     var maxRoles = 2;
                     var selectedCount = $('input[name="example-chosen-multiple[]"]:checked').length;
@@ -875,19 +1034,50 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 $('input[name="example-chosen-multiple[]"]').on('change', updateRoleChoiceLabel);
                 updateRoleChoiceLabel();
 
-                $('#form-validation').on('submit', function () {
-                    var selectedCount = $('input[name="example-chosen-multiple[]"]:checked').length;
+                var validator = $('#form-validation').data('validator');
+                if (validator) {
+                    validator.settings.submitHandler = function (form) {
+                        var selectedCount = $('input[name="example-chosen-multiple[]"]:checked').length;
 
-                    if (selectedCount === 0) {
-                        alert('Please select at least one role.');
-                        return false;
-                    }
+                        if (selectedCount === 0) {
+                            alert('Please select at least one role.');
+                            return false;
+                        }
 
-                    if (selectedCount > 2) {
-                        alert('Please select maximum 2 roles.');
+                        if (selectedCount > 2) {
+                            alert('Please select maximum 2 roles.');
+                            return false;
+                        }
+
+                        $('#experience').val($('#experience_select').val());
+
+                        $.ajax({
+                            url: 'https://digichefs.in/newhr/php_actions/createleadweb.php',
+                            type: 'POST',
+                            data: new FormData(form),
+                            cache: false,
+                            processData: false,
+                            contentType: false,
+                            dataType: 'json',
+                            success: function (response) {
+                                if (response.success) {
+                                    form.reset();
+                                    $('input[name="example-chosen-multiple[]"]').prop('checked', false).prop('disabled', false);
+                                    $('.role-option').removeClass('is-disabled');
+                                    updateRoleChoiceLabel();
+                                    showThankYouPopup(response.messages || 'Thank you! Your application has been submitted successfully.');
+                                } else {
+                                    alert(response.messages || 'Something went wrong while submitting the form. Please try again.');
+                                }
+                            },
+                            error: function () {
+                                alert('Something went wrong while submitting the form. Please try again.');
+                            }
+                        });
+
                         return false;
-                    }
-                });
+                    };
+                }
             });</script>
             <script>
 document.getElementById('experience_select').addEventListener('change', function () {

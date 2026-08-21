@@ -1,4 +1,6 @@
 <?php
+ob_start();
+ini_set('display_errors', '0');
 // header('Access-Control-Allow-Origin: *');  
 
 // Allow the .com site to call this endpoint
@@ -9,6 +11,32 @@ header("Access-Control-Allow-Methods: POST, OPTIONS");
 
 // Allow headers typically used in AJAX
 header("Access-Control-Allow-Headers: Content-Type, X-Requested-With");
+header("Content-Type: application/json; charset=utf-8");
+
+if (function_exists('mysqli_report')) {
+	mysqli_report(MYSQLI_REPORT_OFF);
+}
+
+register_shutdown_function(function () {
+	$error = error_get_last();
+	if (!$error || !in_array($error['type'], array(E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR), true)) {
+		return;
+	}
+
+	while (ob_get_level() > 0) {
+		ob_end_clean();
+	}
+
+	if (!headers_sent()) {
+		http_response_code(500);
+		header("Content-Type: application/json; charset=utf-8");
+	}
+
+	echo json_encode(array(
+		'success' => false,
+		'messages' => 'Something went wrong while submitting the form. Please try again.'
+	), JSON_UNESCAPED_SLASHES);
+});
 
 // Optional: handle preflight OPTIONS requests automatically
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -57,7 +85,7 @@ function normalizeRelocationValue($value)
 function syncApplicantToMailerLite($email, $name, &$valid)
 {
 	$apiKey = getServerSecret('MAILERLITE_API_KEY');
-	if ($apiKey === '') {
+	if ($apiKey === '' || !function_exists('curl_init')) {
 		return;
 	}
 
@@ -92,7 +120,7 @@ function syncApplicantToMailerLite($email, $name, &$valid)
 function syncApplicantToBrevo($email, &$valid)
 {
 	$apiKey = getServerSecret('BREVO_API_KEY');
-	if ($apiKey === '') {
+	if ($apiKey === '' || !function_exists('curl_init')) {
 		return;
 	}
 
@@ -128,25 +156,25 @@ function syncApplicantToBrevo($email, &$valid)
 	curl_close($ch);
 }
 
-$valid['success'] = array('success' => false, 'messages' => array());
+$valid = array('success' => false, 'messages' => 'Something went wrong while submitting the form. Please try again.');
 if($_POST) {	
-	$name = addslashes($_POST['name']);
-	$email = addslashes($_POST['email']);
-	$phone = addslashes($_POST['phone']);
-	$source = addslashes($_POST['source']);
+	$name = addslashes(isset($_POST['name']) ? $_POST['name'] : '');
+	$email = addslashes(isset($_POST['email']) ? $_POST['email'] : '');
+	$phone = addslashes(isset($_POST['phone']) ? $_POST['phone'] : '');
+	$source = addslashes(isset($_POST['source']) ? $_POST['source'] : '');
 	$willing_to_relocate = isset($_POST['willing_to_relocate']) ? addslashes(normalizeRelocationValue($_POST['willing_to_relocate'])) : '';
 	$street = '';
 	$country = '';
-	$city = addslashes($_POST['city']);
+	$city = addslashes(isset($_POST['city']) ? $_POST['city'] : '');
 	$pincode = '';
-	$experience = addslashes($_POST['experience']);
+	$experience = addslashes(isset($_POST['experience']) ? $_POST['experience'] : '');
 	$qualification = '';
 	$cjob = '';
 	$cemployer = '';
-	$expected = addslashes($_POST['expected']);
-	$csalary = addslashes($_POST['csalary']);
-	$skillset = addslashes($_POST['skillset']);
-	$refer = addslashes($_POST['refer']);
+	$expected = addslashes(isset($_POST['expected']) ? $_POST['expected'] : '');
+	$csalary = addslashes(isset($_POST['csalary']) ? $_POST['csalary'] : '');
+	$skillset = addslashes(isset($_POST['skillset']) ? $_POST['skillset'] : '');
+	$refer = addslashes(isset($_POST['refer']) ? $_POST['refer'] : '');
 	$info = '';
 	$portfolio_link = isset($_POST['portfolio']) ? addslashes($_POST['portfolio']) : '';
 	$joining_date = isset($_POST['joining_date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_POST['joining_date']) ? addslashes($_POST['joining_date']) : '';
@@ -239,7 +267,7 @@ Stay tuned!
 Regards,<br>
 HR team";
 	$date = date('Y-m-d H:i:s');
-	$nperiod = addslashes($_POST['notice']);
+	$nperiod = addslashes(isset($_POST['notice']) ? $_POST['notice'] : '');
 	if(isset($_FILES['example-file-input']['name'])){
 		$img_name = $_FILES['example-file-input']['name'];
 	    $img = explode('.', $_FILES['example-file-input']['name']);
@@ -254,7 +282,10 @@ HR team";
   	$sql1 = "SELECT * FROM `tblleads` WHERE email='".$email."'";
   	$sql = "";
 	$result = $connect->query($sql1);
-	if($result->num_rows == 0) { 
+	if (!$result) {
+		$valid['success'] = false;
+		$valid['messages'] = "Something went wrong while submitting the form. Please try again.";
+	} else if($result->num_rows == 0) { 
 		if(isset($_FILES['example-file-input']['name'])){
 		if(in_array($type, array('docx', 'doc', 'pdf', 'rtf', 'DOCX', 'DOC', 'PDF', 'RTF'))) {
 		    if(is_uploaded_file($_FILES['example-file-input']['tmp_name'])) {
