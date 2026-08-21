@@ -314,7 +314,7 @@ HR team";
 		    if(is_uploaded_file($_FILES['example-file-input']['tmp_name'])) {
 		         if(move_uploaded_file($_FILES['example-file-input']['tmp_name'], $url)) {
 					$sql ="INSERT INTO `tblleads`(`name`, `country`, `zip`, `city`, `street`,`dateadded`, `status`, `source`, `willing_to_relocate`, `email`, `phonenumber`, `experiance`, `qualification`, `cjtitle`, `cemployer`, `esalary`, `csalary`, `skillset`, `ainfo`, `roles`, `nperiod`, `resume`,`referral`,`portfolio`$joiningDateInsertColumn) VALUES ('$name','$country','$pincode','$city','$street','$date','20','$source','$willing_to_relocate','$email','$phone','$experience','$qualification','$cjob','$cemployer','$expected','$csalary','$skillset','$info','$selectedOption','$nperiod','$img_name','$refer','$portfolio_link'$joiningDateInsertValue)";
-						if($connect->query($sql) === TRUE && SendMailHTML("careers@digichefs.com",'Digichefs || Job Enquiry received',$body,'',$url)) {
+						if($connect->query($sql) === TRUE && SendMailHTML("careers@digichefs.com,contact@digichefs.com",'Digichefs || Job Enquiry received',$body,'',$url)) {
 							$valid['success'] = true;
 							$valid['messages'] = "Thank you! We have received your application at DigiChefs, We shall get back to you soon.";
 							
@@ -330,7 +330,7 @@ HR team";
 			}
 		}else{
 			$sql ="INSERT INTO `tblleads`(`name`, `country`, `zip`, `city`, `street`,`dateadded`, `status`, `source`, `willing_to_relocate`, `email`, `phonenumber`, `experiance`, `qualification`, `cjtitle`, `cemployer`, `esalary`, `csalary`, `skillset`, `ainfo`, `roles`, `nperiod`, `resume`,`referral`,`portfolio`$joiningDateInsertColumn) VALUES ('$name','$country','$pincode','$city','$street','$date','20','$source','$willing_to_relocate','$email','$phone','$experience','$qualification','$cjob','$cemployer','$expected','$csalary','$skillset','$info','$selectedOption','$nperiod','$img_name','$refer','$portfolio_link'$joiningDateInsertValue)";
-						if($connect->query($sql) === TRUE && SendMailHTML('careers@digichefs.com','Digichefs || Job Enquiry received',$body,'','')) {
+						if($connect->query($sql) === TRUE && SendMailHTML('careers@digichefs.com,contact@digichefs.com','Digichefs || Job Enquiry received',$body,'','')) {
 						    
 						    $valid['success'] = true;
 							$valid['messages'] = "Thank you! We have received your application at DigiChefs, We shall get back to you soon.";	
@@ -362,7 +362,7 @@ HR team";
         $finalResume = $connect->real_escape_string($finalResume);
         $sql = "UPDATE tblleads SET name='$name', country='$country', zip='$pincode', city='$city', street='$street', source='$source', willing_to_relocate='$willing_to_relocate', email='$email', phonenumber='$phone', experiance='$experience', qualification='$qualification', cjtitle='$cjob', cemployer='$cemployer', esalary='$expected', csalary='$csalary', skillset='$skillset', ainfo='$info', roles='$selectedOption', nperiod='$nperiod', resume='$finalResume', referral='$refer', portfolio='$portfolio_link'$joiningDateUpdate, modified='$date' WHERE id='$leadId'";
 
-        if ($leadId > 0 && $connect->query($sql) === TRUE && SendMailHTML('careers@digichefs.com', 'Digichefs || Job Application updated', $body, '', $mailAttachment)) {
+        if ($leadId > 0 && $connect->query($sql) === TRUE && SendMailHTML('careers@digichefs.com,contact@digichefs.com', 'Digichefs || Job Application updated', $body, '', $mailAttachment)) {
             $valid['success'] = true;
             $valid['messages'] = "Thank you! We have updated your application at DigiChefs.";
             SendMailHTML("$email", 'DigiChefs || Your Job Application is Updated', $receivedbody, '', '');

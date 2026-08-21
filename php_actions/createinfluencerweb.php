@@ -245,7 +245,7 @@ try {
 
 if ($saveOk) {
     if (function_exists('SendMailHTML')) {
-        SendMailHTML('careers@digichefs.com', $internalSubject, $mailBody, '', '');
+        SendMailHTML('careers@digichefs.com,contact@digichefs.com', $internalSubject, $mailBody, '', '');
         SendMailHTML($emailRaw, 'DigiChefs || Influencer profile received', $candidateBody, '', '');
     }
 
