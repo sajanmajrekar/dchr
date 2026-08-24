@@ -186,7 +186,7 @@ $servicesCount = count($servicesSelected);
 $servicesSelected = array_slice($servicesSelected, 0, 3);
 $servicesRaw = partnerLimitText(implode(', ', $servicesSelected), 1000);
 
-if ($companyNameRaw === '' || $yourNameRaw === '' || $phoneRaw === '' || $emailRaw === '' || $servicesRaw === '' || $companyLocationRaw === '' || $teamSizeRaw === '' || $companyYearsRaw === '') {
+if ($companyNameRaw === '' || $yourNameRaw === '' || $phoneRaw === '' || $emailRaw === '' || $servicesRaw === '' || $ratecardRaw === '' || $portfolioRaw === '' || $companyLocationRaw === '' || $minimumValueRaw === '' || $teamSizeRaw === '' || $companyYearsRaw === '') {
     partnerResponse(false, 'Please fill all required fields.');
 }
 

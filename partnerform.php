@@ -567,16 +567,16 @@
                                     </div>
 
                                     <div class="form-group">
-                                        <label class="col-md-5 control-label" for="ratecard">Ratecard link or write in text</label>
+                                        <label class="col-md-5 control-label" for="ratecard">Ratecard link or write in text<span class="text-danger">*</span></label>
                                         <div class="col-md-6">
-                                            <textarea id="ratecard" name="ratecard" class="form-control" rows="4" placeholder="Paste ratecard link or write commercials, if any"></textarea>
+                                            <textarea id="ratecard" name="ratecard" class="form-control" rows="4" placeholder="Paste ratecard link or write commercials" required></textarea>
                                         </div>
                                     </div>
 
                                     <div class="form-group">
-                                        <label class="col-md-5 control-label" for="portfolio">Portfolio link</label>
+                                        <label class="col-md-5 control-label" for="portfolio">Portfolio link<span class="text-danger">*</span></label>
                                         <div class="col-md-6">
-                                            <input type="url" id="portfolio" name="portfolio" class="form-control" placeholder="Portfolio link, if any">
+                                            <input type="url" id="portfolio" name="portfolio" class="form-control" placeholder="Portfolio link" required>
                                         </div>
                                     </div>
 
@@ -588,9 +588,9 @@
                                     </div>
 
                                     <div class="form-group">
-                                        <label class="col-md-5 control-label" for="minimum_value">Any minimum project value / retainer value</label>
+                                        <label class="col-md-5 control-label" for="minimum_value">Any minimum project value / retainer value<span class="text-danger">*</span></label>
                                         <div class="col-md-6">
-                                            <input type="text" id="minimum_value" name="minimum_value" class="form-control" placeholder="Example: 50000 per project / month">
+                                            <input type="text" id="minimum_value" name="minimum_value" class="form-control" placeholder="Example: 50000 per project / month" required>
                                         </div>
                                     </div>
 
