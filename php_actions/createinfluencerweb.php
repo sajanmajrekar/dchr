@@ -122,6 +122,43 @@ function influencerResponse($success, $message)
     exit;
 }
 
+function influencerSyncGoogleSheet($payload)
+{
+    $sheetUrl = 'https://script.google.com/macros/s/AKfycbyDptxe8wk2AlgLBh97G9O-mvGNHNfxbM1CNihUujiKVxpE6yj8GSRsLoo4VQuBSxWX3A/exec';
+    $jsonPayload = json_encode($payload, JSON_UNESCAPED_SLASHES);
+
+    if ($jsonPayload === false) {
+        return false;
+    }
+
+    if (function_exists('curl_init')) {
+        $curl = curl_init($sheetUrl);
+        curl_setopt($curl, CURLOPT_POST, true);
+        curl_setopt($curl, CURLOPT_POSTFIELDS, $jsonPayload);
+        curl_setopt($curl, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($curl, CURLOPT_TIMEOUT, 10);
+        curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
+        $response = curl_exec($curl);
+        $httpCode = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        curl_close($curl);
+
+        return $response !== false && $httpCode >= 200 && $httpCode < 300;
+    }
+
+    $context = stream_context_create(array(
+        'http' => array(
+            'method' => 'POST',
+            'header' => "Content-Type: application/json\r\n",
+            'content' => $jsonPayload,
+            'timeout' => 10
+        )
+    ));
+
+    return @file_get_contents($sheetUrl, false, $context) !== false;
+}
+
 if (!isset($conn) || !($conn instanceof mysqli)) {
     influencerResponse(false, 'Something went wrong while submitting the form. Please try again.');
 }
@@ -244,6 +281,18 @@ try {
 }
 
 if ($saveOk) {
+    influencerSyncGoogleSheet(array(
+        'name' => $nameRaw,
+        'channel_link' => $channelLinkRaw,
+        'phone' => $phoneRaw,
+        'email' => $emailRaw,
+        'verticals' => $verticalsRaw,
+        'media_kit' => $mediaKitRaw,
+        'reel_cost' => $reelCostRaw,
+        'past_collabs' => $pastCollabsRaw,
+        'date' => $date
+    ));
+
     if (function_exists('SendMailHTML')) {
         SendMailHTML('careers@digichefs.com,contact@digichefs.com', $internalSubject, $mailBody, '', '');
         SendMailHTML($emailRaw, 'DigiChefs || Influencer profile received', $candidateBody, '', '');
