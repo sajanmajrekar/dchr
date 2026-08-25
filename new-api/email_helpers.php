@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/../includes/city_filter.php';
+
 function emailApiLeadColumnExists($connect, $columnName)
 {
     static $leadColumns = null;
@@ -122,7 +124,7 @@ function emailApiBuildCandidateWhere($connect, $filters)
     }
 
     if (!empty($filters['city']) && emailApiLeadColumnExists($connect, 'city')) {
-        $conditions[] = "tblleads.city LIKE '%" . $connect->real_escape_string($filters['city']) . "%'";
+        $conditions[] = digichefsBuildCityFilterSql($connect, 'tblleads.city', $filters['city']);
     }
 
     if (!empty($filters['relocate']) && emailApiLeadColumnExists($connect, 'willing_to_relocate')) {

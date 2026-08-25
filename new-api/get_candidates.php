@@ -4,6 +4,7 @@ header('Access-Control-Allow-Origin: *');
 
 require_once '../php_actions/db_connect.php';
 require_once '../php_actions/core.php';
+require_once '../includes/city_filter.php';
 
 function apiCandidateClean($value)
 {
@@ -90,7 +91,7 @@ if ($status > 0) {
 
 $city = isset($_GET['city']) ? apiCandidateClean($_GET['city']) : '';
 if ($city !== '') {
-    $where[] = "l.city LIKE '%" . $connect->real_escape_string($city) . "%'";
+    $where[] = digichefsBuildCityFilterSql($connect, 'l.city', $city);
 }
 
 $dateFrom = isset($_GET['date_from']) ? apiCandidateClean($_GET['date_from']) : '';

@@ -19,6 +19,7 @@ register_shutdown_function(function () {
 
 try {
     require_once 'core.php';
+    require_once __DIR__ . '/../includes/city_filter.php';
     if (!($connect instanceof mysqli)) {
         throw new Exception('Database connection failed.');
     }
@@ -204,7 +205,7 @@ try {
         }
 
         if ($city !== '' && datasourceLeadColumnExists($connect, 'city')) {
-            $conditions[] = "tblleads.city LIKE '%" . $connect->real_escape_string($city) . "%'";
+            $conditions[] = digichefsBuildCityFilterSql($connect, 'tblleads.city', $city);
         }
 
         if ($relocate !== '' && datasourceLeadColumnExists($connect, 'willing_to_relocate')) {

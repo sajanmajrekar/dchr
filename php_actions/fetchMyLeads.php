@@ -5,6 +5,7 @@ ini_set('display_errors', '0');
 error_reporting(E_ALL);
 header('Content-Type: application/json');
 mysqli_report(MYSQLI_REPORT_OFF);
+require_once __DIR__ . '/../includes/city_filter.php';
 
 function sendJsonResponse($payload)
 {
@@ -221,8 +222,8 @@ function buildLeadWhereClause($connect)
     }
 
     if (!empty($_POST["city"])) {
-        $city = $connect->real_escape_string(trim((string) $_POST["city"]));
-        $conditions[] = "tblleads.city LIKE '%" . $city . "%'";
+        $city = trim((string) $_POST["city"]);
+        $conditions[] = digichefsBuildCityFilterSql($connect, 'tblleads.city', $city);
     }
 
     if (!empty($_POST["relocate"])) {
@@ -397,8 +398,8 @@ try {
             fetchMyLeadsEsc($leadWillingToRelocate),
             getroletext($leadRoles),
             fetchMyLeadsEsc($leadExperience),
-            fetchMyLeadsEsc($leadCurrentSalary),
-            fetchMyLeadsEsc($leadExpectedSalary),
+            '<span class="salary-wrap" title="' . fetchMyLeadsEsc($leadCurrentSalary) . '">' . fetchMyLeadsEsc($leadCurrentSalary) . '</span>',
+            '<span class="salary-wrap" title="' . fetchMyLeadsEsc($leadExpectedSalary) . '">' . fetchMyLeadsEsc($leadExpectedSalary) . '</span>',
             fetchMyLeadsEsc($leadNoticePeriod),
             !empty($leadDateAdded) ? date("d M, Y", strtotime($leadDateAdded)) : '',
             time_ago($leadLastContact),

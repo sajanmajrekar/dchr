@@ -1,6 +1,7 @@
 <?php 	
 
 require_once 'core.php';
+require_once __DIR__ . '/../includes/city_filter.php';
 include('../mail/lib.php');
 
 $valid['success'] = array('success' => false, 'messages' => array());
@@ -143,7 +144,7 @@ $i= 0;
         }
 
         if (!empty($_POST["city"]) && sendBulkMailLeadColumnExists($connect, 'city')) {
-            $conditions[] = "tblleads.city LIKE '%" . $connect->real_escape_string($_POST["city"]) . "%'";
+            $conditions[] = digichefsBuildCityFilterSql($connect, 'tblleads.city', $_POST["city"]);
         }
 
         if (!empty($_POST["relocate"]) && sendBulkMailLeadColumnExists($connect, 'willing_to_relocate')) {

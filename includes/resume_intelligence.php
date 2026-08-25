@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/city_filter.php';
+
 function resumeIntelligenceConfigPath()
 {
     return dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'resume_intelligence_config.json';
@@ -1458,7 +1460,7 @@ function fetchResumeSearchResults($connect, $filters = array(), $page = 1, $perP
 
     $city = isset($filters['city']) ? trim((string) $filters['city']) : '';
     if ($city !== '') {
-        $where[] = "l.city LIKE '%" . $connect->real_escape_string($city) . "%'";
+        $where[] = digichefsBuildCityFilterSql($connect, 'l.city', $city);
     }
 
     $relocate = isset($filters['relocate']) ? trim((string) $filters['relocate']) : '';
@@ -1724,7 +1726,7 @@ function fetchResumeLeadSearchResults($connect, $filters = array(), $page = 1, $
 
     $city = isset($filters['city']) ? trim((string) $filters['city']) : '';
     if ($city !== '') {
-        $where[] = "t.city LIKE '%" . $connect->real_escape_string($city) . "%'";
+        $where[] = digichefsBuildCityFilterSql($connect, 't.city', $city);
     }
 
     $relocate = isset($filters['relocate']) ? trim((string) $filters['relocate']) : '';

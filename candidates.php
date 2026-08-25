@@ -200,6 +200,21 @@ div.dataTables_info{
     font-size: 12px;
     font-weight: 600;
 }
+.salary-wrap{
+    display: block;
+    max-width: 150px;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    line-height: 1.35;
+}
+#leaddatatable th:nth-child(11),
+#leaddatatable th:nth-child(12),
+#leaddatatable td:nth-child(11),
+#leaddatatable td:nth-child(12){
+    max-width: 170px;
+    white-space: normal;
+}
 </style>
 <!-- Page content -->
 <div id="page-content">

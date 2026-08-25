@@ -88,6 +88,11 @@ function buildIntervalOrderBy()
     return ' ORDER BY ' . $columnMap[$columnIndex] . ' ' . $direction;
 }
 
+function fetchByLastDaysEsc($value)
+{
+    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+}
+
 try {
     require_once 'core.php';
     if (!($connect instanceof mysqli)) {
@@ -160,8 +165,8 @@ try {
             isset($row['willing_to_relocate']) ? $row['willing_to_relocate'] : '',
             getroletext(isset($row['roles']) ? $row['roles'] : ''),
             isset($row['experiance']) ? $row['experiance'] : '',
-            isset($row['csalary']) ? $row['csalary'] : '',
-            isset($row['esalary']) ? $row['esalary'] : '',
+            '<span class="salary-wrap" title="' . fetchByLastDaysEsc(isset($row['csalary']) ? $row['csalary'] : '') . '">' . fetchByLastDaysEsc(isset($row['csalary']) ? $row['csalary'] : '') . '</span>',
+            '<span class="salary-wrap" title="' . fetchByLastDaysEsc(isset($row['esalary']) ? $row['esalary'] : '') . '">' . fetchByLastDaysEsc(isset($row['esalary']) ? $row['esalary'] : '') . '</span>',
             isset($row['nperiod']) ? $row['nperiod'] : '',
             !empty($row['dateadded']) ? date("d M, Y", strtotime($row['dateadded'])) : '',
             time_ago(isset($row['lastcontact']) ? $row['lastcontact'] : null),
