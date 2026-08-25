@@ -9,6 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once '../php_actions/db_connect.php';
+require_once 'auth_helper.php';
 
 if (!($connect instanceof mysqli)) {
     http_response_code(500);
@@ -16,12 +17,14 @@ if (!($connect instanceof mysqli)) {
     exit;
 }
 
+$currentStaffId = apiRequireStaffId($connect);
+
 $payload = json_decode(file_get_contents('php://input'), true);
 if (!is_array($payload)) {
     $payload = $_POST;
 }
 
-$staffId = isset($payload['id']) ? (int) $payload['id'] : 0;
+$staffId = $currentStaffId;
 $firstname = isset($payload['firstname']) ? trim((string) $payload['firstname']) : '';
 $lastname = isset($payload['lastname']) ? trim((string) $payload['lastname']) : '';
 $email = isset($payload['email']) ? trim((string) $payload['email']) : '';
