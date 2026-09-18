@@ -353,7 +353,8 @@ Regards,<br>
 HR team";
 	$date = date('Y-m-d H:i:s');
 	$nperiod = addslashes(isset($_POST['notice']) ? $_POST['notice'] : '');
-	$resumeUpload = storeApplicantResume('example-file-input');
+	$resumeFieldName = isset($_FILES['example-file-input']) ? 'example-file-input' : 'resume';
+	$resumeUpload = storeApplicantResume($resumeFieldName);
 	if (!$resumeUpload['success']) {
 		$valid['messages'] = $resumeUpload['message'];
 		$connect->close();
