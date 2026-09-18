@@ -223,6 +223,12 @@ function getroletext($role){
             else if(trim($value) =="7"){
                array_push($finalstring,' Website Development' );
             }
+			else if(trim($value) =="21"){
+			   array_push($finalstring,' Social Media Videographer' );
+			}
+			else if(trim($value) =="22"){
+			   array_push($finalstring,' Social Media Creator' );
+			}
     }
     return implode(",",$finalstring);
 }
