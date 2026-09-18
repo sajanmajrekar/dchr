@@ -774,7 +774,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                                     <!-- END Form Validation Title -->
 
                                     <!-- Form Validation Form -->
-                                    <form id="form-validation"  method="post" class="form-horizontal form-bordered">
+                                    <form id="form-validation" method="post" enctype="multipart/form-data" class="form-horizontal form-bordered">
                                         <div class="form-group">
                                             <label class="col-md-5 control-label" for="name">Full Name?<span class="text-danger">*</span></label>
                                             <div class="col-md-6">
@@ -902,7 +902,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                                         <div class="form-group">
                                             <label class="col-md-5 control-label" for="example-file-input">Resume / Portfolio (.pdf/.docx only)<span class="text-danger">*</span></label>
                                             <div class="col-md-6">
-                                                <input type="file" id="example-file-input" name="example-file-input" required>
+                                                <input type="file" id="example-file-input" name="example-file-input" accept=".pdf,.doc,.docx,.rtf" required>
                                             </div>
                                         </div>
                                         <div class="form-group">

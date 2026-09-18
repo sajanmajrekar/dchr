@@ -101,6 +101,68 @@ function leadColumnExists($connect, $columnName)
 	return $exists;
 }
 
+function storeApplicantResume($fieldName)
+{
+	if (!isset($_FILES[$fieldName]) || !is_array($_FILES[$fieldName])) {
+		return array('success' => false, 'message' => 'Please attach your resume before submitting.');
+	}
+
+	$file = $_FILES[$fieldName];
+	$error = isset($file['error']) ? (int) $file['error'] : UPLOAD_ERR_NO_FILE;
+	if ($error !== UPLOAD_ERR_OK) {
+		$messages = array(
+			UPLOAD_ERR_INI_SIZE => 'The resume is larger than the server upload limit.',
+			UPLOAD_ERR_FORM_SIZE => 'The resume is too large.',
+			UPLOAD_ERR_PARTIAL => 'The resume upload was interrupted. Please try again.',
+			UPLOAD_ERR_NO_FILE => 'Please attach your resume before submitting.',
+			UPLOAD_ERR_NO_TMP_DIR => 'The server upload folder is unavailable.',
+			UPLOAD_ERR_CANT_WRITE => 'The server could not save the resume.',
+			UPLOAD_ERR_EXTENSION => 'The resume upload was blocked by the server.'
+		);
+
+		return array(
+			'success' => false,
+			'message' => isset($messages[$error]) ? $messages[$error] : 'The resume could not be uploaded.'
+		);
+	}
+
+	$tmpName = isset($file['tmp_name']) ? (string) $file['tmp_name'] : '';
+	$originalName = isset($file['name']) ? (string) $file['name'] : '';
+	$extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+	if (!in_array($extension, array('pdf', 'doc', 'docx', 'rtf'), true)) {
+		return array('success' => false, 'message' => 'Please upload a PDF, DOC, DOCX or RTF resume.');
+	}
+
+	if (!is_uploaded_file($tmpName)) {
+		return array('success' => false, 'message' => 'The resume upload could not be verified. Please try again.');
+	}
+
+	$uploadDirectory = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'resume';
+	if (!is_dir($uploadDirectory) && !@mkdir($uploadDirectory, 0775, true) && !is_dir($uploadDirectory)) {
+		return array('success' => false, 'message' => 'The resume storage folder is unavailable.');
+	}
+
+	try {
+		$randomPart = bin2hex(random_bytes(8));
+	} catch (Throwable $e) {
+		$randomPart = str_replace('.', '', uniqid('', true));
+	} catch (Exception $e) {
+		$randomPart = str_replace('.', '', uniqid('', true));
+	}
+
+	$fileName = 'resume_' . date('YmdHis') . '_' . $randomPart . '.' . $extension;
+	$absolutePath = $uploadDirectory . DIRECTORY_SEPARATOR . $fileName;
+	if (!move_uploaded_file($tmpName, $absolutePath) || !is_file($absolutePath) || (int) @filesize($absolutePath) < 1) {
+		return array('success' => false, 'message' => 'The server could not store the resume. Please try again.');
+	}
+
+	return array(
+		'success' => true,
+		'file_name' => $fileName,
+		'absolute_path' => $absolutePath
+	);
+}
+
 function syncApplicantToMailerLite($email, $name, &$valid)
 {
 	$apiKey = getServerSecret('MAILERLITE_API_KEY');
@@ -291,80 +353,61 @@ Regards,<br>
 HR team";
 	$date = date('Y-m-d H:i:s');
 	$nperiod = addslashes(isset($_POST['notice']) ? $_POST['notice'] : '');
-	if(isset($_FILES['example-file-input']['name'])){
-		$img_name = $_FILES['example-file-input']['name'];
-	    $img = explode('.', $_FILES['example-file-input']['name']);
-	    $type = $img[count($img)-1];
-	    $img_name=uniqid(rand()).'.'.$type;
-	    $url = '../resume/'.$img_name;
-	}else{
-		$img_name="";
+	$resumeUpload = storeApplicantResume('example-file-input');
+	if (!$resumeUpload['success']) {
+		$valid['messages'] = $resumeUpload['message'];
+		$connect->close();
+		echo json_encode($valid);
+		exit;
 	}
+
+	$img_name = $connect->real_escape_string($resumeUpload['file_name']);
+	$url = $resumeUpload['absolute_path'];
 
 
   	$sql1 = "SELECT * FROM `tblleads` WHERE email='".$email."'";
   	$sql = "";
 	$result = $connect->query($sql1);
 	if (!$result) {
+		@unlink($url);
 		$valid['success'] = false;
 		$valid['messages'] = "Something went wrong while submitting the form. Please try again.";
-	} else if($result->num_rows == 0) { 
-		if(isset($_FILES['example-file-input']['name'])){
-		if(in_array($type, array('docx', 'doc', 'pdf', 'rtf', 'DOCX', 'DOC', 'PDF', 'RTF'))) {
-		    if(is_uploaded_file($_FILES['example-file-input']['tmp_name'])) {
-		         if(move_uploaded_file($_FILES['example-file-input']['tmp_name'], $url)) {
-					$sql ="INSERT INTO `tblleads`(`name`, `country`, `zip`, `city`, `street`,`dateadded`, `status`, `source`, `willing_to_relocate`, `email`, `phonenumber`, `experiance`, `qualification`, `cjtitle`, `cemployer`, `esalary`, `csalary`, `skillset`, `ainfo`, `roles`, `nperiod`, `resume`,`referral`,`portfolio`$joiningDateInsertColumn) VALUES ('$name','$country','$pincode','$city','$street','$date','20','$source','$willing_to_relocate','$email','$phone','$experience','$qualification','$cjob','$cemployer','$expected','$csalary','$skillset','$info','$selectedOption','$nperiod','$img_name','$refer','$portfolio_link'$joiningDateInsertValue)";
-						if($connect->query($sql) === TRUE && SendMailHTML("careers@digichefs.com,contact@digichefs.com",'Digichefs || Job Enquiry received',$body,'',$url)) {
-							$valid['success'] = true;
-							$valid['messages'] = "Thank you! We have received your application at DigiChefs, We shall get back to you soon.";
-							
-							SendMailHTML("$email",'DigiChefs || Your Job Application is Received',$receivedbody,'','');
-							syncApplicantToMailerLite($email, $name, $valid);
-							syncApplicantToBrevo($email, $valid);
-						} else {
-							$valid['success'] = false;
-							$valid['messages'] = "Error while adding the Candidate" . $connect->error;
-						}
-					}
-				}
-			}
-		}else{
-			$sql ="INSERT INTO `tblleads`(`name`, `country`, `zip`, `city`, `street`,`dateadded`, `status`, `source`, `willing_to_relocate`, `email`, `phonenumber`, `experiance`, `qualification`, `cjtitle`, `cemployer`, `esalary`, `csalary`, `skillset`, `ainfo`, `roles`, `nperiod`, `resume`,`referral`,`portfolio`$joiningDateInsertColumn) VALUES ('$name','$country','$pincode','$city','$street','$date','20','$source','$willing_to_relocate','$email','$phone','$experience','$qualification','$cjob','$cemployer','$expected','$csalary','$skillset','$info','$selectedOption','$nperiod','$img_name','$refer','$portfolio_link'$joiningDateInsertValue)";
-						if($connect->query($sql) === TRUE && SendMailHTML('careers@digichefs.com,contact@digichefs.com','Digichefs || Job Enquiry received',$body,'','')) {
-						    
-						    $valid['success'] = true;
-							$valid['messages'] = "Thank you! We have received your application at DigiChefs, We shall get back to you soon.";	
-							SendMailHTML("$email",'Digichefs || Application received',$receivedbody,'','');
-						    syncApplicantToMailerLite($email, $name, $valid);
-						    syncApplicantToBrevo($email, $valid);
-						} else {
-							$valid['success'] = false;
-							$valid['messages'] = "Error while adding the Candidate" . $connect->error;
-						}
+	} else if($result->num_rows == 0) {
+		$sql ="INSERT INTO `tblleads`(`name`, `country`, `zip`, `city`, `street`,`dateadded`, `status`, `source`, `willing_to_relocate`, `email`, `phonenumber`, `experiance`, `qualification`, `cjtitle`, `cemployer`, `esalary`, `csalary`, `skillset`, `ainfo`, `roles`, `nperiod`, `resume`,`referral`,`portfolio`$joiningDateInsertColumn) VALUES ('$name','$country','$pincode','$city','$street','$date','20','$source','$willing_to_relocate','$email','$phone','$experience','$qualification','$cjob','$cemployer','$expected','$csalary','$skillset','$info','$selectedOption','$nperiod','$img_name','$refer','$portfolio_link'$joiningDateInsertValue)";
+		if($connect->query($sql) === TRUE) {
+			$leadId = (int) $connect->insert_id;
+			$valid['success'] = true;
+			$valid['messages'] = "Thank you! We have received your application at DigiChefs, We shall get back to you soon.";
+			SendMailHTML("careers@digichefs.com,contact@digichefs.com", 'Digichefs || Job Enquiry received', $body, '', $url);
+			SendMailHTML("$email", 'DigiChefs || Your Job Application is Received', $receivedbody, '', '');
+			syncApplicantToMailerLite($email, $name, $valid);
+			syncApplicantToBrevo($email, $valid);
+			processResumeLead($connect, array(
+				'id' => $leadId,
+				'name' => stripslashes($name),
+				'email' => stripslashes($email),
+				'phonenumber' => stripslashes($phone),
+				'resume' => $img_name
+			));
+		} else {
+			@unlink($url);
+			$valid['messages'] = "Error while adding the Candidate" . $connect->error;
 		}
 	}
 	else{
         $existingLead = $result->fetch_assoc();
         $leadId = isset($existingLead['id']) ? (int) $existingLead['id'] : 0;
         $existingResume = isset($existingLead['resume']) ? (string) $existingLead['resume'] : '';
-        $finalResume = $existingResume;
-        $mailAttachment = '';
-
-        if (!empty($_FILES['example-file-input']['name'])) {
-            if (in_array($type, array('docx', 'doc', 'pdf', 'rtf', 'DOCX', 'DOC', 'PDF', 'RTF'))) {
-                if (is_uploaded_file($_FILES['example-file-input']['tmp_name']) && move_uploaded_file($_FILES['example-file-input']['tmp_name'], $url)) {
-                    $finalResume = $img_name;
-                    $mailAttachment = $url;
-                }
-            }
-        }
+		$finalResume = $img_name;
+		$mailAttachment = $url;
 
         $finalResume = $connect->real_escape_string($finalResume);
         $sql = "UPDATE tblleads SET name='$name', country='$country', zip='$pincode', city='$city', street='$street', source='$source', willing_to_relocate='$willing_to_relocate', email='$email', phonenumber='$phone', experiance='$experience', qualification='$qualification', cjtitle='$cjob', cemployer='$cemployer', esalary='$expected', csalary='$csalary', skillset='$skillset', ainfo='$info', roles='$selectedOption', nperiod='$nperiod', resume='$finalResume', referral='$refer', portfolio='$portfolio_link'$joiningDateUpdate, modified='$date' WHERE id='$leadId'";
 
-        if ($leadId > 0 && $connect->query($sql) === TRUE && SendMailHTML('careers@digichefs.com,contact@digichefs.com', 'Digichefs || Job Application updated', $body, '', $mailAttachment)) {
-            $valid['success'] = true;
-            $valid['messages'] = "Thank you! We have updated your application at DigiChefs.";
+		if ($leadId > 0 && $connect->query($sql) === TRUE) {
+			$valid['success'] = true;
+			$valid['messages'] = "Thank you! We have updated your application at DigiChefs.";
+			SendMailHTML('careers@digichefs.com,contact@digichefs.com', 'Digichefs || Job Application updated', $body, '', $mailAttachment);
             SendMailHTML("$email", 'DigiChefs || Your Job Application is Updated', $receivedbody, '', '');
             syncApplicantToMailerLite($email, $name, $valid);
             syncApplicantToBrevo($email, $valid);
@@ -375,7 +418,8 @@ HR team";
                 'phonenumber' => stripslashes($phone),
                 'resume' => $finalResume
             ));
-        } else {
+		} else {
+			@unlink($url);
             $valid['success'] = false;
             $valid['messages'] = "Error while updating your application" . $connect->error;
         }
