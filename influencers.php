@@ -7,7 +7,7 @@
         <meta name="robots" content="noindex, nofollow">
         <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=0">
 
-        <link rel="shortcut icon" href="https://digichefs.com/wp-content/uploads/2019/11/ms-icon-310x310.png?fit=32%2C32&ssl=1">
+        <link rel="icon" type="image/png" href="img/digichefs-favicon.png">
         <link rel="apple-touch-icon" href="https://digichefs.com/wp-content/uploads/2019/11/ms-icon-310x310.png?fit=32%2C32&ssl=1" sizes="57x57">
         <link rel="apple-touch-icon" href="https://digichefs.com/wp-content/uploads/2019/11/ms-icon-310x310.png?fit=32%2C32&ssl=1" sizes="72x72">
         <link rel="apple-touch-icon" href="https://digichefs.com/wp-content/uploads/2019/11/ms-icon-310x310.png?fit=32%2C32&ssl=1" sizes="76x76">
