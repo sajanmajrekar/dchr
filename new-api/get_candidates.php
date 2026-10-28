@@ -72,6 +72,11 @@ if ($appBasePath === '' || $appBasePath === '.') {
 
 $where = array('1=1');
 
+$name = isset($_GET['name']) ? apiCandidateClean($_GET['name']) : '';
+if ($name !== '') {
+    $where[] = "l.name LIKE '%" . $connect->real_escape_string($name) . "%'";
+}
+
 $search = isset($_GET['search']) ? apiCandidateClean($_GET['search']) : '';
 if ($search !== '') {
     $escaped = $connect->real_escape_string($search);
